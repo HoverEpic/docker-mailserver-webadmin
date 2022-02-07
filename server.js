@@ -120,7 +120,7 @@ app.get('/users', function (req, res) {
             res.status(403).send();
     });
 });
-//get users
+//get alias
 app.get('/alias', function (req, res) {
     check_auth(req, res, function (result) {
         if (result) {
@@ -139,6 +139,10 @@ app.get('/alias', function (req, res) {
 });
 
 
+//commands : https://docker-mailserver.github.io/docker-mailserver/edge/config/setup.sh/#usage
+
+
+
 // functions
 var get_domains = function (limit, offset, sort, order, search, callback) {
     var results = [];
@@ -148,7 +152,7 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
             for (var i = offset; i < (domains_result.length > limit ? limit : domains_result.length); i++) {
                 if (domains_result[i].includes(search)) {
                     results[j] = {};
-                    results[j].name = domains_result[i];
+                    results[j].domain_name = domains_result[i];
                     //TODO get user, alias, mails & KDIM
                     results[j].users_count = getDirSync(MAIL_DATA_DIR + "/" + domains_result[i]).length;
 //                    var k = 0;
@@ -185,14 +189,14 @@ var get_users = function (limit, offset, sort, order, search, callback) {
                     var address = line.split("|")[0];
                     var parts = address.split("@");
                     results[j] = {};
-                    results[j].domain = parts[1];
-                    results[j].name = parts[0];
+                    results[j].user_domain = parts[1];
+                    results[j].user_name = parts[0];
                     //TODO get alias, mails
-//                    results[j].mails_count = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + parts[1] + "/" + parts[0]), false);
+//                    results[j].user_mails_count = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + parts[1] + "/" + parts[0]), false);
                     results[j].mails_count = "0 KiB";
                     results[j].can_receive = true;
                     results[j].can_send = true;
-                    results[j].admin = false;
+                    results[j].user_is_admin = false;
                     j++;
                 }
             }

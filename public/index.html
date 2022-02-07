@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//FR" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html lang="fr">
-    <head>
+    <head><!-- from https://bootsnipp.com/snippets/eNe4v -->
         <title>docker-mailserver-webadmin</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
@@ -234,6 +234,10 @@
                         </div>-->
                         <div class="tab-content">
                             <div role="tabpanel" class="tab-pane active" id="domains">
+                                <div class="alert alert-danger alert-dismissible" style="display: none" id="domains_error" role="alert">
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                    <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                                </div>
                                 <div id="domains_table_toolbar" class="btn-group">
                                     <button type="button" class="btn btn-primary" id="domain_add" title="Add domain">
                                         <i class="glyphicon glyphicon-plus"></i> Add domain
@@ -245,6 +249,10 @@
                                 <table id="domains_table"></table>
                             </div>
                             <div role="tabpanel" class="tab-pane" id="users">
+                                <div class="alert alert-danger alert-dismissible" style="display: none" id="users_error" role="alert">
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                    <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                                </div>
                                 <div id="users_table_toolbar" class="btn-group">
                                     <button type="button" class="btn btn-primary" id="user_add" title="Add user">
                                         <i class="glyphicon glyphicon-plus"></i> Add user
@@ -256,6 +264,10 @@
                                 <table id="users_table"></table>
                             </div>
                             <div role="tabpanel" class="tab-pane" id="alias">
+                                <div class="alert alert-danger alert-dismissible" style="display: none" id="alias2_error" role="alert">
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                    <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                                </div>
                                 <div id="alias_table_toolbar" class="btn-group">
                                     <button type="button" class="btn btn-primary" id="alias_add" title="Add alias">
                                         <i class="glyphicon glyphicon-plus"></i> Add alias
@@ -270,6 +282,10 @@
                                 quotas
                             </div>
                             <div role="tabpanel" class="tab-pane" id="dkim">
+                                <div class="alert alert-danger alert-dismissible" style="display: none" id="dkim_error" role="alert">
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                    <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                                </div>
                                 <div id="kdim_table_toolbar" class="btn-group">
                                     <button type="button" class="btn btn-primary" id="kdim_add" title="Add KDIM">
                                         <i class="glyphicon glyphicon-plus"></i> Add KDIM
@@ -298,13 +314,18 @@
         <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment-with-locales.js"></script>
         <script>
-            $(function () {
+            $(document).ready(function () {
                 $('[data-toggle="tooltip"]').tooltip();
                 $(".side-nav .collapse").on("hide.bs.collapse", function () {
                     $(this).prev().find(".fa").eq(1).removeClass("fa-angle-right").addClass("fa-angle-down");
                 });
                 $('.side-nav .collapse').on("show.bs.collapse", function () {
                     $(this).prev().find(".fa").eq(1).removeClass("fa-angle-down").addClass("fa-angle-right");
+                });
+
+                $('.alert-dismissible').on('close.bs.alert', function (e) {
+                    e.preventDefault();
+                    $(this).hide();
                 });
 
                 //DOMAINS
@@ -332,7 +353,7 @@
                         {
                             checkbox: true
                         }, {
-                            field: 'name',
+                            field: 'domain_name',
                             title: 'Name'
                         }, {
                             field: 'users_count',
@@ -370,19 +391,72 @@
                 }
 
                 $("#domain_add").click(function () {
-                    //TODO reset modal
-                    //TODO display modal
+                    $('#domain_add_modal #domain_error').hide();
+                    //display modal
                     $('#domain_add_modal').modal('show');
                 });
                 $('#domain_create').click(function () {
-                    //add or update domain
-                });
-
-                $("#domains_remove").click(function () {
-                    var ids = $.map($('#domains_table').bootstrapTable('getSelections'), function (row) {
-                        return row.id;
+                    //check domain name
+                    if ($('#domain_add_modal #domain_name').val() !== "") {
+                        $('#domain_add_modal #domain_error .error_text').html("domain can not be empty");
+                        $('#domain_add_modal #domain_error').show();
+                    }
+                    //add domain
+                    $.ajax({
+                        url: '/domains',
+                        type: 'PUT',
+                        data: JSON.stringify({domain_name: $('#domain_add_modal #domain_name').val()}),
+                        contentType: 'application/json',
+                        success: function (data) {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                //show error
+                                $('#domain_add_modal #domain_error .error_text').html(data.error);
+                                $('#domain_add_modal #domain_error').show();
+                            } else {
+                                //reset modal
+                                $('#domain_add_modal').modal('hide');
+                                $('#domains_table').bootstrapTable('refresh', {silent: true});
+                                $('#domain_add_modal #domain_name').val("");
+                                $('#domain_add_modal #domain_error').hide();
+                            }
+                        },
+                        error: function (request, status, error) {
+                            //show error
+                            $('#domain_add_modal #domain_error .error_text').html(request.status + " " + error);
+                            $('#domain_add_modal #domain_error').show();
+                        }
                     });
-                    //TODO alert delete
+                });
+                $("#domains_remove").click(function () {
+                    var names = $.map($('#domains_table').bootstrapTable('getSelections'), function (row) {
+                        return row.domain_name;
+                    });
+                    if (names.length > 0) {
+                        $.ajax({
+                            url: '/domains',
+                            type: 'DELETE',
+                            data: JSON.stringify({names: names}),
+                            contentType: 'application/json',
+                            success: function (data) {
+                                data = JSON.parse(data);
+                                if (data.error) {
+                                    //show error
+                                    $('#domains_error .error_text').html(data.error);
+                                    $('#domains_error').show();
+                                } else {
+                                    //update table
+                                    $('#domains_table').bootstrapTable('refresh', {silent: true});
+                                    $('#domains_error').hide();
+                                }
+                            },
+                            error: function (request, status, error) {
+                                //show error
+                                $('#domains_error .error_text').html(request.status + " " + error);
+                                $('#domains_error').show();
+                            }
+                        });
+                    }
                 });
 
                 //USERS
@@ -410,24 +484,24 @@
                         {
                             checkbox: true
                         }, {
-                            field: 'name',
+                            field: 'user_name',
                             title: 'Name'
                         }, {
-                            field: 'domain',
+                            field: 'user_domain',
                             title: 'Domain'
                         }, {
-                            field: 'mails_count',
+                            field: 'user_mails_count',
                             title: 'Mails'
                         }, {
-                            field: 'can_receive',
+                            field: 'user_can_receive',
                             title: 'Can receive',
                             formatter: users_table_true_false
                         }, {
-                            field: 'can_send',
+                            field: 'user_can_send',
                             title: 'Can send',
                             formatter: users_table_true_false
                         }, {
-                            field: 'is_admin',
+                            field: 'user_is_admin',
                             title: 'Admin',
                             formatter: users_table_true_false
                         }, {
@@ -454,20 +528,91 @@
                         '</button> '
                     ].join('');
                 }
-
                 $("#user_add").click(function () {
-                    //TODO reset modal
-                    //TODO display modal
+                    $('#user_add_modal #user_error').hide();
+                    //show modal
                     $('#user_add_modal').modal('show');
                 });
                 $('#user_create').click(function () {
-                    //add or update user
+                    //check user name
+                    if ($('#user_add_modal #user_name').val() !== "") {
+                        $('#user_add_modal #user_error .error_text').html("user can not be empty");
+                        $('#user_add_modal #user_error').show();
+                    } else if (  //check user password
+                    $('#user_add_modal #user_password').val() !== $('#user_add_modal #user_repassword').val()) {
+                        $('#user_add_modal #user_error .error_text').html("Passwords mismatched");
+                        $('#user_add_modal #user_error').show();
+                    } else {
+                        //create or update user
+                        $.ajax({
+                            url: '/users',
+                            type: 'PUT',
+                            data: JSON.stringify({
+                                user_name: $('#user_add_modal #user_name').val(),
+                                domain_name: $('#user_add_modal #domain_name').val(),
+                                user_password: $('#user_add_modal #user_password').val()
+                            }),
+                            contentType: 'application/json',
+                            success: function (data) {
+                                data = JSON.parse(data);
+                                if (data.error) {
+                                    //show error
+                                    $('#user_add_modal #user_error .error_text').html(data.error);
+                                    $('#user_add_modal #user_error').show();
+                                } else {
+                                    //reset modal
+                                    $('#user_add_modal').modal('hide');
+                                    $('#user_add_modal .modal-title').html("Create a new user");
+                                    $('#user_add_modal #existing_user_name').val("");
+                                    $('#user_add_modal #user_name').val("");
+                                    $('#user_add_modal #user_name').attr("disable", "false");
+                                    $('#user_add_modal #user_domain').val("");
+                                    $('#user_add_modal #user_domain').attr("disable", "false");
+                                    $('#user_add_modal #user_password').val("");
+                                    $('#user_add_modal #user_repassword').val("");
+                                    $('#user_add_modal #user_can_receive').bootstrapToggle('off');
+                                    $('#user_add_modal #user_can_send').bootstrapToggle('off');
+                                    $('#user_add_modal #user_is_admin').bootstrapToggle('off');
+                                    $('#user_add_modal #user_error').hide();
+                                }
+                            },
+                            error: function (request, status, error) {
+                                //show error
+                                $('#user_add_modal #user_error .error_text').html(request.status + " " + error);
+                                $('#user_add_modal #user_error').show();
+                            }
+                        });
+                    }
                 });
                 $("#users_remove").click(function () {
-                    var ids = $.map($('#user_table').bootstrapTable('getSelections'), function (row) {
-                        return row.id;
+                    var names = $.map($('#users_table').bootstrapTable('getSelections'), function (row) {
+                        return row.user_name;
                     });
-                    //TODO alert delete
+                    if (names.length > 0) {
+                        $.ajax({
+                            url: '/users',
+                            type: 'DELETE',
+                            data: JSON.stringify({names: names}),
+                            contentType: 'application/json',
+                            success: function (data) {
+                                data = JSON.parse(data);
+                                if (data.error) {
+                                    //show error
+                                    $('#users_error .error_text').html(data.error);
+                                    $('#users_error').show();
+                                } else {
+                                    //update table
+                                    $('#users_table').bootstrapTable('refresh', {silent: true});
+                                    $('#users_error').hide();
+                                }
+                            },
+                            error: function (request, status, error) {
+                                //show error
+                                $('#users_error .error_text').html(request.status + " " + error);
+                                $('#users_error').show();
+                            }
+                        });
+                    }
                 });
 
                 //ALIAS
@@ -519,34 +664,101 @@
                 }
 
                 $("#alias_add").click(function () {
-                    //TODO reset modal
-                    //TODO display modal
+                    $('#alias_add_modal #alias_error').hide();
+                    //display modal
                     $('#alias_add_modal').modal('show');
                 });
                 $('#alias_create').click(function () {
-                    //add or update user
+                    //check names
+                    if ($('#alias_add_modal #alias_from').val() !== "" && $('#alias_add_modal #alias_to').val() !== "") {
+                        $('#alias_add_modal #alias_error .error_text').html("alias or destination can not be empty");
+                        $('#alias_add_modal #alias_error').show();
+                    } else {
+                        //add alias
+                        $.ajax({
+                            url: '/alias',
+                            type: 'PUT',
+                            data: JSON.stringify({
+                                alias_from: $('#alias_add_modal #alias_from').val(),
+                                alias_to: $('#alias_add_modal #alias_to').val(),
+                            }),
+                            contentType: 'application/json',
+                            success: function (data) {
+                                data = JSON.parse(data);
+                                if (data.error) {
+                                    //show error
+                                    $('#alias_add_modal #alias_error .error_text').html(data.error);
+                                    $('#alias_add_modal #alias_error').show();
+                                } else {
+                                    //reset modal
+                                    $('#alias_add_modal').modal('hide');
+                                    $('#alias_table').bootstrapTable('refresh', {silent: true});
+                                    $('#alias_add_modal #alias_from').val("");
+                                    $('#alias_add_modal #alias_to').val("");
+                                    $('#alias_add_modal #domain_error').hide();
+                                }
+                            },
+                            error: function (request, status, error) {
+                                //show error
+                                $('#alias_add_modal #alias_error .error_text').html(request.status + " " + error);
+                                $('#alias_add_modal #alias_error').show();
+                            }
+                        });
+                    }
                 });
                 $("#alias_remove").click(function () {
-                    var ids = $.map($('#alias_table').bootstrapTable('getSelections'), function (row) {
-                        return row.id;
+                    var alias = $.map($('#alias_table').bootstrapTable('getSelections'), function (row) {
+                        return row.name;
                     });
-                    //TODO alert delete
+                    if (alias.length > 0) {
+                        $.ajax({
+                            url: '/alias',
+                            type: 'DELETE',
+                            data: JSON.stringify({alias: alias}),
+                            contentType: 'application/json',
+                            success: function (data) {
+                                data = JSON.parse(data);
+                                if (data.error) {
+                                    //show error
+                                    $('#alias2_error .error_text').html(data.error);
+                                    $('#alias2_error').show();
+                                } else {
+                                    //update table
+                                    $('#alias_table').bootstrapTable('refresh', {silent: true});
+                                    $('#alias2_error').hide();
+                                }
+                            },
+                            error: function (request, status, error) {
+                                //show error
+                                $('#alias2_error .error_text').html(request.status + " " + error);
+                                $('#alias2_error').show();
+                            }
+                        });
+                    }
                 });
             });
 
             // Tables events
             window.domains_table_events = {// catch table events here !
-                'click .domain_edit': function (e, value, row, index) {
-                    //TODO populate modal
-                    $('#domain_add_modal').modal('show');
-                },
                 'click .domain_remove': function (e, value, row, index) {
-                    //domains_remove(row.id);
+                    //domains_remove(row.name);
                 }
             };
             window.users_table_events = {// catch table events here !
                 'click .user_edit': function (e, value, row, index) {
                     //TODO populate modal
+                    $('#user_add_modal #user_error').hide();
+                    $('#user_add_modal .modal-title').html("Edit user");
+                    $('#user_add_modal #existing_user_name').val(row.user_name);
+                    $('#user_add_modal #user_name').val(row.user_name);
+                    $('#user_add_modal #user_name').attr("disabled", "true");
+                    $('#user_add_modal #user_domain').val(row.user_domain);
+                    $('#user_add_modal #user_domain').attr("disabled", "true");
+                    $('#user_add_modal #user_password').val("secret");
+                    $('#user_add_modal #user_repassword').val("secret");
+                    $('#user_add_modal #user_can_receive').bootstrapToggle('on');
+                    $('#user_add_modal #user_can_send').bootstrapToggle('off');
+                    $('#user_add_modal #user_is_admin').bootstrapToggle('off');
                     $('#user_add_modal').modal('show');
                 },
                 'click .user_remove': function (e, value, row, index) {
@@ -554,10 +766,6 @@
                 }
             };
             window.alias_table_events = {// catch table events here !
-                'click .alias_edit': function (e, value, row, index) {
-                    //TODO populate modal
-                    $('#alias_add_modal').modal('show');
-                },
                 'click .alias_remove': function (e, value, row, index) {
                     //users_remove(row.id);
                 }
@@ -571,8 +779,11 @@
                         <h4 class="modal-title">Create a new domain</h4>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-danger alert-dismissible" style="display: none" id="domain_error" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                        </div>
                         <form>
-                            <input type="hidden" id="existing_domain_name">
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="form-group">
@@ -598,14 +809,18 @@
                         <h4 class="modal-title">Create a new user</h4>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-danger alert-dismissible" style="display: none" id="user_error" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                        </div>
                         <form>
                             <input type="hidden" id="existing_user_name">
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="input-group">
                                         <span class="input-group-addon" id="basic-addon3">Username</span>
-                                        <input type="text" class="form-control" id="user_name" placeholder="<username>">
-                                        <span class="input-group-addon" id="basic-addon1">@</span>
+                                        <input type="text" class="form-control" id="user_name" placeholder="<username>" autocomplete="off">
+                                        <span class="input-group-addon" id="basic-addon2">@</span>
                                         <select class="form-control" id="user_domain">
                                             <option>balek.tk</option>
                                             <option>coulon.tk</option>
@@ -632,18 +847,18 @@
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_enable">
-                                            Can receive
-                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_can_receive-addon">Can receive</span>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_can_receive">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_send_only">
-                                            Can send
-                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_can_send-addon">Can send</span>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_can_send">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -651,10 +866,10 @@
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_admin">
-                                            Admin
-                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_is_admin-addon">Is admin</span>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_is_admin">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -675,8 +890,11 @@
                         <h4 class="modal-title">Create a new alias</h4>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-danger alert-dismissible" style="display: none" id="alias_error" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                        </div>
                         <form>
-                            <input type="hidden" id="existing_alias_name">
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="form-group">
