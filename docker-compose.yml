@@ -1,0 +1,19 @@
+version: '2'
+
+services:
+  mailserver-webadmin:
+      build: .
+      container_name: mailserver-webadmin
+      restart: always
+      ports :
+       - 80:80
+      volumes:
+       - ./public/index.html:/usr/src/app/public/index.html #
+       - ./dms_data/mail-data/:/var/mail:ro             #
+       - ./dms_data/mail-state/:/var/mail-state:ro      #
+       - ./dms_data/mail-logs/:/var/log/mail:ro         #
+       - ./dms_data/config/:/tmp/docker-mailserver:ro   #
+       - ./certs/:/etc/letsencrypt/live/:ro             #
+       - /etc/localtime:/etc/localtime:ro               #
+       - /var/run/docker.sock:/tmp/docker.sock:ro       #
+       

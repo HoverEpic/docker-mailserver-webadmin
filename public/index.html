@@ -1,0 +1,704 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//FR" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="fr">
+    <head>
+        <title>docker-mailserver-webadmin</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+        <script defer src="https://use.fontawesome.com/releases/v5.0.6/js/all.js"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.4/css/bootstrap-select.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.12.1/bootstrap-table.min.css">
+        <link rel="stylesheet" href="http://cdn.rawgit.com/Eonasdan/bootstrap-datetimepicker/e8bddc60e73c1ec2475f827be36e1957af72e2ea/build/css/bootstrap-datetimepicker.css">
+        <link rel="stylesheet" href="http://www.bootstraptoggle.com/css/bootstrap-toggle.css">
+        <link rel="stylesheet" href="https://blueimp.github.io/jQuery-File-Upload/css/jquery.fileupload.css">
+        <style>
+            @import url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css');
+            @media(min-width:768px) {
+                body {
+                    margin-top: 50px;
+                }
+                /*html, body, #wrapper, #page-wrapper {height: 100%; overflow: hidden;}*/
+            }
+
+            #wrapper {
+                padding-left: 0;    
+            }
+
+            #page-wrapper {
+                width: 100%;        
+                padding: 0;
+                background-color: #fff;
+            }
+
+            @media(min-width:768px) {
+                #wrapper {
+                    padding-left: 225px;
+                }
+
+                #page-wrapper {
+                    padding: 22px 10px;
+                }
+            }
+
+            /* Top Navigation */
+
+            .top-nav {
+                padding: 0 15px;
+            }
+
+            .top-nav>li {
+                display: inline-block;
+                float: left;
+            }
+
+            .top-nav>li>a {
+                padding-top: 20px;
+                padding-bottom: 20px;
+                line-height: 20px;
+                color: #fff;
+            }
+
+            .top-nav>li>a:hover,
+            .top-nav>li>a:focus,
+            .top-nav>.open>a,
+            .top-nav>.open>a:hover,
+            .top-nav>.open>a:focus {
+                color: #fff;
+                background-color: #1a242f;
+            }
+
+            .top-nav>.open>.dropdown-menu {
+                float: left;
+                position: absolute;
+                margin-top: 0;
+                /*border: 1px solid rgba(0,0,0,.15);*/
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+                background-color: #fff;
+                -webkit-box-shadow: 0 6px 12px rgba(0,0,0,.175);
+                box-shadow: 0 6px 12px rgba(0,0,0,.175);
+            }
+
+            .top-nav>.open>.dropdown-menu>li>a {
+                white-space: normal;
+            }
+
+            /* Side Navigation */
+
+            @media(min-width:768px) {
+                .side-nav {
+                    position: fixed;
+                    top: 60px;
+                    left: 225px;
+                    width: 225px;
+                    margin-left: -225px;
+                    border: none;
+                    border-radius: 0;
+                    border-top: 1px rgba(0,0,0,.5) solid;
+                    overflow-y: auto;
+                    background-color: #222;
+                    /*background-color: #5A6B7D;*/
+                    bottom: 0;
+                    overflow-x: hidden;
+                    padding-bottom: 40px;
+                }
+
+                .side-nav>li>a {
+                    width: 225px;
+                    border-bottom: 1px rgba(0,0,0,.3) solid;
+                }
+
+                .side-nav li a:hover,
+                .side-nav li a:focus {
+                    outline: none;
+                    background-color: #1a242f !important;
+                }
+            }
+
+            .side-nav>li>ul {
+                padding: 0;
+                border-bottom: 1px rgba(0,0,0,.3) solid;
+            }
+
+            .side-nav>li>ul>li>a {
+                display: block;
+                padding: 10px 15px 10px 38px;
+                text-decoration: none;
+                /*color: #999;*/
+                color: #fff;    
+            }
+
+            .side-nav>li>ul>li>a:hover {
+                color: #fff;
+            }
+
+            .navbar .nav > li > a > .label {
+                -webkit-border-radius: 50%;
+                -moz-border-radius: 50%;
+                border-radius: 50%;
+                position: absolute;
+                top: 14px;
+                right: 6px;
+                font-size: 10px;
+                font-weight: normal;
+                min-width: 15px;
+                min-height: 15px;
+                line-height: 1.0em;
+                text-align: center;
+                padding: 2px;
+            }
+
+            .navbar .nav > li > a:hover > .label {
+                top: 10px;
+            }
+
+            .navbar-brand {
+                padding: 5px 15px;
+            }
+            .bootstrap-select.btn-group .dropdown-menu li a {
+                padding: 5px;
+            }
+            .bootstrap-select .dropdown-toggle.bs-placeholder, .input-group .form-control:last-child, .input-group-btn:last-child>.btn {
+                border-radius: 4px;
+            }
+            .fixed-table-toolbar .btn {
+                height: 34px;
+            }
+            .modal-xl {
+                width: 1000px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="throbber" style="display:none; min-height:120px;"></div>
+        <div id="noty-holder"></div>
+        <div id="wrapper">
+            <!-- Navigation -->
+            <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+                <!-- Brand and toggle get grouped for better mobile display -->
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">
+                        <h2 style="margin-top: 7px;">docker-mailserver-webadmin</h2>
+                    </a>
+                </div>
+                <!-- Top Menu Items -->
+                <ul class="nav navbar-right top-nav">
+                    <!--<li>
+                        <a href="#" data-placement="bottom" data-toggle="tooltip" href="#" data-original-title="Stats"><i class="fa fa-bar-chart-o"></i></a>
+                    </li>-->
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">admin@balek.tk <b class="fa fa-angle-down"></b></a>
+                        <ul class="dropdown-menu">
+                            <!--<li><a href="#"><i class="fa fa-fw fa-user"></i> Edit Profile</a></li>-->
+                            <li><a href="#"><i class="fa fa-fw fa-cog"></i> Change Password</a></li>
+                            <li class="divider"></li>
+                            <li><a href="#"><i class="fa fa-fw fa-power-off"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <!-- Sidebar Menu Items - These collapse to the responsive navigation menu on small screens -->
+                <div class="collapse navbar-collapse navbar-ex1-collapse">
+                    <ul class="nav navbar-nav side-nav">
+                        <li>
+                            <a href="#domains" aria-controls="domains" role="tab" data-toggle="tab"><i class="fa fa-fw fa-globe"></i> Domains </a>
+                        </li>
+                        <li>
+                            <a href="#users" aria-controls="users" role="tab" data-toggle="tab"><i class="fa fa-fw fa-users"></i>  Users </a>
+                        </li>
+                        <li>
+                            <a href="#alias" aria-controls="alias" role="tab" data-toggle="tab"><i class="fa fa-fw fa-newspaper"></i>  Alias </a>
+                        </li>
+                        <li>
+                            <a href="#quotas" aria-controls="quotas" role="tab" data-toggle="tab"><i class="fa fa-fw fa-newspaper"></i>  Quotas </a>
+                        </li>
+                        <li>
+                            <a href="#dkim" aria-controls="dkim" role="tab" data-toggle="tab"><i class="fa fa-fw fa-shield-alt"></i>  DKIM </a>
+                        </li>
+                    </ul>
+                </div>
+                <!-- /.navbar-collapse -->
+            </nav>
+
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <!-- Page Heading -->
+                    <div class="row" id="main" >
+                        <!--<div class="col-sm-12 col-md-12 well">
+                            <h1>Welcome Admin!</h1>
+                        </div>-->
+                        <div class="tab-content">
+                            <div role="tabpanel" class="tab-pane active" id="domains">
+                                <div id="domains_table_toolbar" class="btn-group">
+                                    <button type="button" class="btn btn-primary" id="domain_add" title="Add domain">
+                                        <i class="glyphicon glyphicon-plus"></i> Add domain
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="domains_remove" title="Delete">
+                                        <i class="glyphicon glyphicon-trash"></i> Delete
+                                    </button>
+                                </div>
+                                <table id="domains_table"></table>
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="users">
+                                <div id="users_table_toolbar" class="btn-group">
+                                    <button type="button" class="btn btn-primary" id="user_add" title="Add user">
+                                        <i class="glyphicon glyphicon-plus"></i> Add user
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="users_remove" title="Delete">
+                                        <i class="glyphicon glyphicon-trash"></i> Delete
+                                    </button>
+                                </div>
+                                <table id="users_table"></table>
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="alias">
+                                <div id="alias_table_toolbar" class="btn-group">
+                                    <button type="button" class="btn btn-primary" id="alias_add" title="Add alias">
+                                        <i class="glyphicon glyphicon-plus"></i> Add alias
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="alias_remove" title="Delete">
+                                        <i class="glyphicon glyphicon-trash"></i> Delete
+                                    </button>
+                                </div>
+                                <table id="alias_table"></table>
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="quotas">
+                                quotas
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="dkim">
+                                <div id="kdim_table_toolbar" class="btn-group">
+                                    <button type="button" class="btn btn-primary" id="kdim_add" title="Add KDIM">
+                                        <i class="glyphicon glyphicon-plus"></i> Add KDIM
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="kdim_remove" title="Delete">
+                                        <i class="glyphicon glyphicon-trash"></i> Delete
+                                    </button>
+                                </div>
+                                <table id="kdim_table"></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /.row -->
+            </div>
+            <!-- /.container-fluid -->
+        </div>
+        <!-- /#page-wrapper -->
+        <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.4/js/bootstrap-select.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.12.1/bootstrap-table.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.12.1/locale/bootstrap-table-fr-FR.min.js"></script>
+        <script src="https://unpkg.com/bootstrap-table@1.12.1/dist/extensions/auto-refresh/bootstrap-table-auto-refresh.min.js"></script>
+        <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment-with-locales.js"></script>
+        <script>
+            $(function () {
+                $('[data-toggle="tooltip"]').tooltip();
+                $(".side-nav .collapse").on("hide.bs.collapse", function () {
+                    $(this).prev().find(".fa").eq(1).removeClass("fa-angle-right").addClass("fa-angle-down");
+                });
+                $('.side-nav .collapse').on("show.bs.collapse", function () {
+                    $(this).prev().find(".fa").eq(1).removeClass("fa-angle-down").addClass("fa-angle-right");
+                });
+
+                //DOMAINS
+
+                $('#domains_table').bootstrapTable({//http://bootstrap-table.wenzhixin.net.cn/documentation/
+                    classes: 'table table-hover table-condensed table-responsive',
+                    toolbar: "#domains_table_toolbar",
+                    url: '/domains',
+                    method: 'get',
+                    sidePagination: 'server',
+                    cache: false,
+                    height: '',
+                    striped: false,
+                    pagination: true,
+                    pageSize: 10,
+                    pageList: [10, 25, 50, 100, 200],
+                    search: true,
+                    searchAlign: 'right',
+                    showColumns: false,
+                    showRefresh: true,
+                    showHeader: true,
+                    minimumCountColumns: 2,
+                    clickToSelect: false,
+                    columns: [
+                        {
+                            checkbox: true
+                        }, {
+                            field: 'name',
+                            title: 'Name'
+                        }, {
+                            field: 'users_count',
+                            title: 'Users'
+                        }, {
+                            field: 'alias_count',
+                            title: 'Alias'
+                        }, {
+                            field: 'mails_count',
+                            title: 'Mails'
+                        }, {
+                            field: 'kdim_created',
+                            title: 'KDIM',
+                            formatter: domains_table_kdim
+                        }, {
+                            title: 'Actions',
+                            events: domains_table_events,
+                            formatter: domains_table_buttons
+                        }
+                    ]
+                });
+                function domains_table_kdim(value, row, index) {
+                    if (value) {
+                        return '<span class="label label-success">Success</span>';
+                    } else {
+                        return '<span class="label label-warning">Warning</span>';
+                    }
+                }
+                function domains_table_buttons(value, row, index) {
+                    return [
+                        '<button class="btn btn-danger btn-xs domains_remove" title="Delete">',
+                        '<i class="glyphicon glyphicon-remove"></i> Remove',
+                        '</button> '
+                    ].join('');
+                }
+
+                $("#domain_add").click(function () {
+                    //TODO reset modal
+                    //TODO display modal
+                    $('#domain_add_modal').modal('show');
+                });
+                $('#domain_create').click(function () {
+                    //add or update domain
+                });
+
+                $("#domains_remove").click(function () {
+                    var ids = $.map($('#domains_table').bootstrapTable('getSelections'), function (row) {
+                        return row.id;
+                    });
+                    //TODO alert delete
+                });
+
+                //USERS
+
+                $('#users_table').bootstrapTable({//http://bootstrap-table.wenzhixin.net.cn/documentation/
+                    classes: 'table table-hover table-condensed table-responsive',
+                    toolbar: "#users_table_toolbar",
+                    url: '/users',
+                    method: 'get',
+                    sidePagination: 'server',
+                    cache: false,
+                    height: '',
+                    striped: false,
+                    pagination: true,
+                    pageSize: 10,
+                    pageList: [10, 25, 50, 100, 200],
+                    search: true,
+                    searchAlign: 'right',
+                    showColumns: false,
+                    showRefresh: true,
+                    showHeader: true,
+                    minimumCountColumns: 2,
+                    clickToSelect: false,
+                    columns: [
+                        {
+                            checkbox: true
+                        }, {
+                            field: 'name',
+                            title: 'Name'
+                        }, {
+                            field: 'domain',
+                            title: 'Domain'
+                        }, {
+                            field: 'mails_count',
+                            title: 'Mails'
+                        }, {
+                            field: 'can_receive',
+                            title: 'Can receive',
+                            formatter: users_table_true_false
+                        }, {
+                            field: 'can_send',
+                            title: 'Can send',
+                            formatter: users_table_true_false
+                        }, {
+                            field: 'is_admin',
+                            title: 'Admin',
+                            formatter: users_table_true_false
+                        }, {
+                            title: 'Actions',
+                            events: users_table_events,
+                            formatter: users_table_buttons
+                        }
+                    ]
+                });
+                function users_table_true_false(value, row, index) {
+                    if (value) {
+                        return '<span class="label label-success">TRUE</span>';
+                    } else {
+                        return '<span class="label label-warning">FALSE</span>';
+                    }
+                }
+                function users_table_buttons(value, row, index) {
+                    return [
+                        '<button class="btn btn-default btn-xs user_edit" title="Edit">',
+                        '<i class="glyphicon glyphicon-pencil"></i> Edit',
+                        '</button> ',
+                        '<button class="btn btn-danger btn-xs users_remove" title="Delete">',
+                        '<i class="glyphicon glyphicon-remove"></i> Remove',
+                        '</button> '
+                    ].join('');
+                }
+
+                $("#user_add").click(function () {
+                    //TODO reset modal
+                    //TODO display modal
+                    $('#user_add_modal').modal('show');
+                });
+                $('#user_create').click(function () {
+                    //add or update user
+                });
+                $("#users_remove").click(function () {
+                    var ids = $.map($('#user_table').bootstrapTable('getSelections'), function (row) {
+                        return row.id;
+                    });
+                    //TODO alert delete
+                });
+
+                //ALIAS
+
+                $('#alias_table').bootstrapTable({//http://bootstrap-table.wenzhixin.net.cn/documentation/
+                    classes: 'table table-hover table-condensed table-responsive',
+                    toolbar: "#alias_table_toolbar",
+                    url: '/alias',
+                    method: 'get',
+                    sidePagination: 'server',
+                    cache: false,
+                    height: '',
+                    striped: false,
+                    pagination: true,
+                    pageSize: 10,
+                    pageList: [10, 25, 50, 100, 200],
+                    search: true,
+                    searchAlign: 'right',
+                    showColumns: false,
+                    showRefresh: true,
+                    showHeader: true,
+                    minimumCountColumns: 2,
+                    clickToSelect: false,
+                    columns: [
+                        {
+                            checkbox: true
+                        }, {
+                            field: 'name',
+                            title: 'Name'
+                        }, {
+                            field: 'domain',
+                            title: 'Domain'
+                        }, {
+                            field: 'destination',
+                            title: 'Destination'
+                        }, {
+                            title: 'Actions',
+                            events: alias_table_events,
+                            formatter: alias_table_buttons
+                        }
+                    ]
+                });
+                function alias_table_buttons(value, row, index) {
+                    return [
+                        '<button class="btn btn-danger btn-xs alias_remove" title="Delete">',
+                        '<i class="glyphicon glyphicon-remove"></i> Remove',
+                        '</button> '
+                    ].join('');
+                }
+
+                $("#alias_add").click(function () {
+                    //TODO reset modal
+                    //TODO display modal
+                    $('#alias_add_modal').modal('show');
+                });
+                $('#alias_create').click(function () {
+                    //add or update user
+                });
+                $("#alias_remove").click(function () {
+                    var ids = $.map($('#alias_table').bootstrapTable('getSelections'), function (row) {
+                        return row.id;
+                    });
+                    //TODO alert delete
+                });
+            });
+
+            // Tables events
+            window.domains_table_events = {// catch table events here !
+                'click .domain_edit': function (e, value, row, index) {
+                    //TODO populate modal
+                    $('#domain_add_modal').modal('show');
+                },
+                'click .domain_remove': function (e, value, row, index) {
+                    //domains_remove(row.id);
+                }
+            };
+            window.users_table_events = {// catch table events here !
+                'click .user_edit': function (e, value, row, index) {
+                    //TODO populate modal
+                    $('#user_add_modal').modal('show');
+                },
+                'click .user_remove': function (e, value, row, index) {
+                    //users_remove(row.id);
+                }
+            };
+            window.alias_table_events = {// catch table events here !
+                'click .alias_edit': function (e, value, row, index) {
+                    //TODO populate modal
+                    $('#alias_add_modal').modal('show');
+                },
+                'click .alias_remove': function (e, value, row, index) {
+                    //users_remove(row.id);
+                }
+            };
+        </script>
+        <div class="modal fade" tabindex="-1" role="dialog" id="domain_add_modal">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Create a new domain</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <input type="hidden" id="existing_domain_name">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label for="domain_name">Domain name</label>
+                                        <input type="text" class="form-control" id="domain_name" placeholder="<domain.ext>">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="domain_create">Create domain</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+        <div class="modal fade" tabindex="-1" role="dialog" id="user_add_modal">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Create a new user</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <input type="hidden" id="existing_user_name">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="input-group">
+                                        <span class="input-group-addon" id="basic-addon3">Username</span>
+                                        <input type="text" class="form-control" id="user_name" placeholder="<username>">
+                                        <span class="input-group-addon" id="basic-addon1">@</span>
+                                        <select class="form-control" id="user_domain">
+                                            <option>balek.tk</option>
+                                            <option>coulon.tk</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="input-group">
+                                        <span class="input-group-addon" id="user_password-addon">Password</span>
+                                        <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_password-addon" id="user_password" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="input-group">
+                                        <span class="input-group-addon" id="user_repassword-addon">Repeat password</span>
+                                        <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_repassword-addon" id="user_repassword" autocomplete="off">
+                                    </div>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_enable">
+                                            Can receive
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_send_only">
+                                            Can send
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_admin">
+                                            Admin
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="user_create">Create User</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+        <div class="modal fade" tabindex="-1" role="dialog" id="alias_add_modal">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Create a new alias</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <input type="hidden" id="existing_alias_name">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label for="alias_name">Alias mail</label>
+                                        <input type="text" class="form-control" id="alias_from" placeholder="<username@domain.ext>">
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label for="alias_name">Destination mail</label>
+                                        <input type="text" class="form-control" id="alias_to" placeholder="<username@domain.ext>">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="domain_create">Create alias</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+    </body>
+</html>
