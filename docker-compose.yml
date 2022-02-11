@@ -1,19 +1,49 @@
 version: '2'
 
 services:
-  mailserver-webadmin:
-      build: .
-      container_name: mailserver-webadmin
-      restart: always
-      ports :
-       - 80:80
+  mailserver:
+      image: docker.io/mailserver/docker-mailserver:latest
+      container_name: mailserver
+    # If the FQDN for your mail-server is only two labels (eg: example.com),
+    # you can assign this entirely to `hostname` and remove `domainname`.
+#      hostname: mail.test.tk
+#      domainname: test.tk
+      env_file: dms_data/mailserver.env
+    # More information about the mail-server ports:
+    # https://docker-mailserver.github.io/docker-mailserver/edge/config/security/understanding-the-ports/
+    # To avoid conflicts with yaml base-60 float, DO NOT remove the quotation marks.
+      ports:
+       - "25:25"    # SMTP  (explicit TLS => STARTTLS)
+       - "143:143"  # IMAP4 (explicit TLS => STARTTLS)
+       - "587:587"  # ESMTP (explicit TLS => STARTTLS)
+       - "465:465"  # ESMTP (implicit TLS)
+       - "993:993"  # IMAP4 (implicit TLS)
       volumes:
-       - ./public/index.html:/usr/src/app/public/index.html #
-       - ./dms_data/mail-data/:/var/mail:ro             #
-       - ./dms_data/mail-state/:/var/mail-state:ro      #
-       - ./dms_data/mail-logs/:/var/log/mail:ro         #
-       - ./dms_data/config/:/tmp/docker-mailserver:ro   #
-       - ./certs/:/etc/letsencrypt/live/:ro             #
-       - /etc/localtime:/etc/localtime:ro               #
-       - /var/run/docker.sock:/tmp/docker.sock:ro       #
+       - ./dms_data/mail-data/:/var/mail/
+       - ./dms_data/mail-state/:/var/mail-state/
+       - ./dms_data/mail-logs/:/var/log/mail/
+       - ./dms_data/config/:/tmp/docker-mailserver/
+       - /etc/localtime:/etc/localtime:ro
+       - ./certs/:/etc/letsencrypt/live/:ro
+      restart: always
+      stop_grace_period: 1m
+#      cap_add:
+#       - NET_ADMIN
+#       - SYS_PTRACE
+
+#  mailserver-webadmin:
+#      build: .
+#      container_name: mailserver-webadmin
+#      restart: always
+#      ports :
+#       - 8080:80
+#      volumes:
+#       - ./public/index.html:/usr/src/app/public/index.html #
+#       - ./dms_data/mail-data/:/var/mail:ro             #
+#       - ./dms_data/mail-state/:/var/mail-state:ro      #
+#       - ./dms_data/mail-logs/:/var/log/mail:ro         #
+#       - ./dms_data/config/:/tmp/docker-mailserver:ro   #
+#       - ./certs/:/etc/letsencrypt/live/:ro             #
+#       - /etc/localtime:/etc/localtime:ro               #
+#       - /var/run/docker.sock:/tmp/docker.sock:ro       #
        

@@ -1,16 +1,15 @@
 # docker-mailserver-webadmin
 Quick and dirty docker-mailserver webadmin using NodeJS
-Read only for now !
-
+=> Read files for display, send docker exec for update
 
 ## Features :
- - manage domains
- - manage users
- - manage alias
+ - manage domains (list)
+ - manage users (list/add/delete/change password)
+ - manage alias (list/add/delete)
 
 ## Prerequisites :
  - Docker
- - docker-mailserver container
+ - docker-mailserver container (docker.io/mailserver/docker-mailserver:latest)
 
 ## Build :
 docker-compose --build
@@ -19,16 +18,19 @@ docker-compose --build
 docker-compose up
 
 ## Volumes :
- - TODO
+ - all from mailserver (config/mail-data/mail-state/mail-logs)
+ - /etc/localtime
+ - /var/run/docker.sock
 
 Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
- - implements docker client to send updates commands
+ - fix docker compose build image (can't build on my system)
  - Quotas
  - DKIM
+ - clean docker-compose.yml
+ - auth / tokens (local or unsecure now)
 
 ## Plans :
- - auth / tokens
- - web API
- - change system from file reads to commands only
+ - web API ?
+ - change system from file reads to commands only ?
