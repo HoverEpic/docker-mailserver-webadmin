@@ -35,6 +35,7 @@ const DOCKER_MAILSERVER_NAME = "mailserver";
 const CONFIG_DIR = "./dms_data/config";
 const MAIL_DATA_DIR = "./dms_data/mail-data";
 const MAIL_STATE_DIR = "./dms_data/mail-state";
+const MAIL_LOGS_DIR = "./dms_data/mail-logs";
 
 //var AUTH = ["username": {
 //                "password": "password"
@@ -160,7 +161,7 @@ app.put('/users', function (req, res) {
                 });
             } else {
                 //TODO set user restrictions
-                
+
                 //TODO admin system
             }
         } else
@@ -236,24 +237,24 @@ app.get('/dkim', function (req, res) {
         if (result) {
             var domain = req.query.domain || '';
             if (fs.existsSync(CONFIG_DIR + "/opendkim/keys/" + domain + "/mail.txt")) {
-            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) {
-                if (err)
-                    res.send(JSON.stringify({error: err}));
-                else {
-                    //parse output should always be in that format TODO test with different keysize
-                    var test = data.raw.split('\t');//0: selector, 1: IN, 2: TXT, 3...: public_key
-                    var keysize = 4096;
-                    var selector = test[0];
-                    var public_key = "";
-                    for(let i = 3; i < test.length; i++)
-                        public_key += test[i].replace ('( \"','').replace('\"\n','').replace('  \"','').split('\" )  ;')[0];
-                    public_key = public_key.split('\" )  ;')[0];
-                    res.send(JSON.stringify({raw: data.raw, selector: selector, domain: domain, keysize: keysize, public_key: public_key}));
-                }
-            });
-        } else { //no key
-            res.send(JSON.stringify({error: "No key found for this domain, please make keys !"}));
-        }
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) {
+                    if (err)
+                        res.send(JSON.stringify({error: err}));
+                    else {
+                        //parse output should always be in that format TODO test with different keysize
+                        var test = data.raw.split('\t');//0: selector, 1: IN, 2: TXT, 3...: public_key
+                        var keysize = 4096;
+                        var selector = test[0];
+                        var public_key = "";
+                        for (let i = 3; i < test.length; i++)
+                            public_key += test[i].replace('( \"', '').replace('\"\n', '').replace('  \"', '').split('\" )  ;')[0];
+                        public_key = public_key.split('\" )  ;')[0];
+                        res.send(JSON.stringify({raw: data.raw, selector: selector, domain: domain, keysize: keysize, public_key: public_key}));
+                    }
+                });
+            } else { //no key
+                res.send(JSON.stringify({error: "No key found for this domain, please make keys !"}));
+            }
         } else
             res.status(403).send();
     });
@@ -274,6 +275,24 @@ app.post('/dkim', function (req, res) {
             docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim' + command_parts).then(function (data, err) {
                 res.send(JSON.stringify({message: data, error: err}));
             });
+        } else
+            res.status(403).send();
+    });
+});
+app.get('/logs', function (req, res) {
+    check_auth(req, res, function (result) {
+        if (result) {
+            var file = req.query.file || '';
+            if (fs.existsSync(MAIL_LOGS_DIR + "/" + file)) {
+//                readFileAsync(MAIL_LOGS_DIR + "/" + file, function (logs_result) {
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /var/log/mail/' + file).then(function (data, err) {
+                    if (data.raw)
+                        data = data.raw.split('\n');
+                    res.send(JSON.stringify({data: data, error: err}));
+                });
+            } else { //no key
+                res.send(JSON.stringify({error: "No log file found !"}));
+            }
         } else
             res.status(403).send();
     });
@@ -402,7 +421,7 @@ const getDirSync = source =>
 const readFileAsync = (file, callback) =>
     fs.readFile(file, 'utf8', function read(err, data) {
         if (err) {
-            throw err;
+            return callback(err);
         }
         callback(data.split("\n").filter(function (line) {
             return line.trim();

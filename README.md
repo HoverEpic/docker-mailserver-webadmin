@@ -1,11 +1,15 @@
 # docker-mailserver-webadmin
 Quick and dirty docker-mailserver webadmin using NodeJS
+
 => Read files for display, send docker exec for update
+
+/!\ do not expose on public internet
 
 ## Features :
  - manage domains (list/dkim)
  - manage users (list/add/delete/change password)
  - manage alias (list/add/delete)
+ - view logs
 
 ## Prerequisites :
  - Docker
@@ -26,9 +30,12 @@ Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
  - fix docker compose build image (can't build on my system)
- - Quotas
  - clean docker-compose.yml
- - auth / tokens (local or unsecure now)
+ - quotas
+ - admin system
+ - interface refresh timers (async remove users & alias)
+ - users restrictions (view/update)
+ - better caching on client (domains, users)
 
 ## Plans :
  - web API ?

@@ -214,12 +214,9 @@
                         <li>
                             <a href="#alias" aria-controls="alias" role="tab" data-toggle="tab"><i class="fa fa-fw fa-newspaper"></i>  Alias </a>
                         </li>
-                        <!--<li>
-                            <a href="#quotas" aria-controls="quotas" role="tab" data-toggle="tab"><i class="fa fa-fw fa-newspaper"></i>  Quotas </a>
-                        </li>
                         <li>
-                            <a href="#dkim" aria-controls="dkim" role="tab" data-toggle="tab"><i class="fa fa-fw fa-shield-alt"></i>  DKIM </a>
-                        </li>-->
+                            <a href="#logs" aria-controls="logs" role="tab" data-toggle="tab"><i class="fa fa-fw fa-newspaper"></i>  Logs </a>
+                        </li>
                     </ul>
                 </div>
                 <!-- /.navbar-collapse -->
@@ -237,14 +234,6 @@
                                 <div class="alert alert-danger alert-dismissible" style="display: none" id="domains_error" role="alert">
                                     <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                                     <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
-                                </div>
-                                <div id="domains_table_toolbar" class="btn-group">
-                                    <!--<button type="button" class="btn btn-primary" id="domain_add" title="Add domain">
-                                        <i class="glyphicon glyphicon-plus"></i> Add domain
-                                    </button>
-                                    <button type="button" class="btn btn-danger" id="domains_remove" title="Delete">
-                                        <i class="glyphicon glyphicon-trash"></i> Delete
-                                    </button>-->
                                 </div>
                                 <table id="domains_table"></table>
                             </div>
@@ -277,6 +266,36 @@
                                     </button>
                                 </div>
                                 <table id="alias_table"></table>
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="logs">
+                                <div class="alert alert-danger alert-dismissible" style="display: none" id="logs_error" role="alert">
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                    <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                                </div>
+                                <div class="row">
+                                    <div class="col-lg-6">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="basic-addon3">Select a file</span>
+                                            <select class="form-control" id="logs_file"><!-- TODO scan logs dir to build this list -->
+                                                <option value="clamav.log">clamav.log</option>
+                                                <option value="freshclam.log">freshclam.log</option>
+                                                <option value="mail.log">mail.log</option>
+                                                <option value="mail.log.1">mail.log.1</option>
+                                                <option value="mail.log">mail.info</option>
+                                                <option value="mail.warn">mail.warn</option>
+                                            </select>
+                                            <span class="input-group-btn">
+                                                <button class="btn btn-default" id="logs_get" type="button">Go!</button>
+                                            </span>
+                                        </div><!-- /input-group -->
+                                    </div><!-- /.col-lg-6 -->
+                                </div><!-- /.row -->
+                                <br>
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <pre id="logs_lines"></pre>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -323,7 +342,6 @@
 
                 $('#domains_table').bootstrapTable({//http://bootstrap-table.wenzhixin.net.cn/documentation/
                     classes: 'table table-hover table-condensed table-responsive',
-                    toolbar: "#domains_table_toolbar",
                     url: '/domains',
                     method: 'get',
                     sidePagination: 'server',
@@ -374,7 +392,7 @@
                 function domains_table_buttons(value, row, index) {
                     return [
                         '<button class="btn btn-default btn-xs dkim_details" title="DKIM details">',
-                        '<i class="glyphicon glyphicon-pencil"></i> DKIM details',
+                        'Security details',
                         '</button> '
                     ].join('');
                 }
@@ -481,7 +499,7 @@
                     if (domain === "other")
                         domain = $('#user_add_modal #user_new_domain').val();
                     var password = $('#user_add_modal #user_password').val();
-                    
+
                     if (!validateName(username)) {//check user name
                         $('#user_add_modal #user_error .error_text').html("user should only contain letters, numbers & _");
                         $('#user_add_modal #user_error').show();
@@ -657,6 +675,35 @@
                             //show error
                             $('#dkim_modal #dkim_error .error_text').html(request.status + " " + error);
                             $('#dkim_modal #dkim_error').show();
+                        }
+                    });
+                });
+
+                //LOGS
+                $("#logs_get").click(function () {
+                    //empty log
+                    $("#logs_lines").html("");
+                    $('#logs_error').hide();
+                    $.ajax({
+                        url: '/logs',
+                        type: 'GET',
+                        data: {file: $('#logs_file').val()},
+                        contentType: 'application/json',
+                        success: function (data) {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                $('#logs_error .error_text').html(data.error);
+                                $('#logs_error').show();
+                            } else {
+                                for (var i = 0; i < data.data.length; i++) {
+                                    $("#logs_lines").append(data.data[i] + "<br>");
+                                }
+                            }
+                        },
+                        error: function (request, status, error) {
+                            //show error
+                            $('#logs_error .error_text').html(request.status + " " + error);
+                            $('#logs_error').show();
                         }
                     });
                 });
@@ -840,36 +887,6 @@
                 }
             };
         </script>
-        <div class="modal fade" tabindex="-1" role="dialog" id="domain_add_modal">
-            <div class="modal-dialog modal-xl" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        <h4 class="modal-title">Create a new domain</h4>
-                    </div>
-                    <div class="modal-body">
-                        <div class="alert alert-danger alert-dismissible" style="display: none" id="domain_error" role="alert">
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                            <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
-                        </div>
-                        <form>
-                            <div class="row">
-                                <div class="col-sm-6">
-                                    <div class="form-group">
-                                        <label for="domain_name">Domain name</label>
-                                        <input type="text" class="form-control" id="domain_name" placeholder="<domain.ext>">
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="domain_create">Create domain</button>
-                    </div>
-                </div><!-- /.modal-content -->
-            </div><!-- /.modal-dialog -->
-        </div><!-- /.modal -->
         <div class="modal fade" tabindex="-1" role="dialog" id="user_add_modal">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
@@ -890,7 +907,7 @@
                                         <span class="input-group-addon" id="basic-user_name-addon">Username</span>
                                         <input type="text" class="form-control" id="user_name" placeholder="<username>" autocomplete="off">
                                         <span class="input-group-addon" id="basic-user_domain-addon">@</span>
-                                        <select class="form-control" id="user_domain">
+                                        <select class="form-control" id="user_domain"><!-- TODO scan domains to build this list -->
                                             <option value="balek.tk">balek.tk</option>
                                             <option value="coulon.tk">coulon.tk</option>
                                             <option value="other">other</option>
@@ -985,7 +1002,7 @@
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label for="alias_destination">Destination (existing user)</label>
+                                        <label for="alias_destination">Destination (existing user)</label><!-- TODO scan domains to a list -->
                                         <input type="text" class="form-control" id="alias_destination" placeholder="<existing@domain.ext>">
                                     </div>
                                 </div>
@@ -1004,7 +1021,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        <h4 class="modal-title">DKIM details</h4>
+                        <h4 class="modal-title">Security details</h4>
                     </div>
                     <div class="modal-body">
                         <div class="alert alert-danger alert-dismissible" style="display: none" id="dkim_error" role="alert">
