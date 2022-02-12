@@ -476,13 +476,20 @@
                     $('#user_add_modal').modal('show');
                 });
                 $('#user_create').click(function () {
-                    //check user name TODO regex
-                    if (validateName($('#user_add_modal #user_name').val())) {
+                    var username = $('#user_add_modal #user_name').val();
+                    var domain = $('#user_add_modal #user_domain').val();
+                    if (domain === "other")
+                        domain = $('#user_add_modal #user_new_domain').val();
+                    var password = $('#user_add_modal #user_password').val();
+                    
+                    if (!validateName(username)) {//check user name
                         $('#user_add_modal #user_error .error_text').html("user should only contain letters, numbers & _");
                         $('#user_add_modal #user_error').show();
-                    } else
-                    if (!$('#user_add_modal #user_password').val().empty() && $('#user_add_modal #user_password').val() !== $('#user_add_modal #user_repassword').val()) {//check user password
+                    } else if (password === "" && password !== $('#user_add_modal #user_repassword').val()) {//check user password
                         $('#user_add_modal #user_error .error_text').html("Passwords mismatched");
+                        $('#user_add_modal #user_error').show();
+                    } else if (!validateDomain(domain)) { //check domain
+                        $('#user_add_modal #user_error .error_text').html("Domain not valid !");
                         $('#user_add_modal #user_error').show();
                     } else {
                         //create or update user
@@ -490,10 +497,10 @@
                             url: '/users',
                             type: 'PUT',
                             data: JSON.stringify({
-                                user_name: $('#user_add_modal #user_name').val(),
+                                user_name: username,
                                 existing_user_name: $('#user_add_modal #existing_user_name').val(),
-                                domain_name: $('#user_add_modal #user_domain').val(),
-                                user_password: $('#user_add_modal #user_password').val(),
+                                domain_name: domain,
+                                user_password: password,
                                 user_can_receive: $('#user_add_modal #user_can_receive').val(),
                                 user_can_send: $('#user_add_modal #user_can_send').val(),
                                 user_is_admin: $('#user_add_modal #user_is_admin').val()
@@ -522,7 +529,7 @@
                 });
                 $("#users_remove").click(function () {
                     var names = $.map($('#users_table').bootstrapTable('getSelections'), function (row) {
-                        return row.user_name + '@' + row.user_domain;
+                        return row.user_address;
                     });
                     remove_users(names);
                 });
@@ -619,6 +626,40 @@
                     });
                     remove_alias(alias);
                 });
+
+                //DKIM
+                $('#dkim_create').click(function () {
+                    //TODO checks
+                    //make dkim
+                    $.ajax({
+                        url: '/dkim',
+                        type: 'POST',
+                        data: JSON.stringify({
+                            selector: $('#dkim_modal #dkim_selector').val(),
+                            domain: $('#dkim_modal #dkim_domain').val(),
+                            keysize: $('#dkim_modal #dkim_keysize').val(),
+                        }),
+                        contentType: 'application/json',
+                        success: function (data) {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                //show error
+                                $('#dkim_modal #dkim_error .error_text').html(data.error);
+                                $('#dkim_modal #dkim_error').show();
+                            } else {
+                                //hide modal + update table + reset modal
+                                $('#dkim_modal').modal('hide');
+                                $('#domains_table').bootstrapTable('refresh', {silent: true});
+                                $('#dkim_modal #dkim_error').hide();
+                            }
+                        },
+                        error: function (request, status, error) {
+                            //show error
+                            $('#dkim_modal #dkim_error .error_text').html(request.status + " " + error);
+                            $('#dkim_modal #dkim_error').show();
+                        }
+                    });
+                });
             });
 
             function remove_users(names) {
@@ -638,6 +679,7 @@
                                 //hide modal + update table (TODO wait 2s)
                                 $('#users_table').bootstrapTable('refresh', {silent: true});
                                 $('#users_error').hide();
+
                             }
                         },
                         error: function (request, status, error) {
@@ -712,14 +754,57 @@
                 return valid;
             }
 
+            const validateDomain = (domain) => { // thanks https://stackoverflow.com/a/26093611
+                return domain.match(/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/);
+            };
+
             const validateEmail = (email) => { // thanks https://stackoverflow.com/a/46181
                 return email.match(/^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
             };
 
             // Tables events
             window.domains_table_events = {// catch table events here !
-                'click .dkim_details':function (e, value, row, index) {
-                    $('#dkim_modal').modal('show');
+                'click .dkim_details': function (e, value, row, index) {
+                    $.ajax({
+                        url: '/dkim',
+                        type: 'GET',
+                        data: {domain: row.domain_name},
+                        contentType: 'application/json',
+                        success: function (data) {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                //show error (if key is not present, ask for generate)
+                                $('#dkim_modal #dkim_error .error_text').html(data.error);
+                                $('#dkim_modal #dkim_error').show();
+                                $('#dkim_modal #dkim_selector').val("");
+                                $('#dkim_modal #dkim_selector').removeAttr('disabled');
+                                $('#dkim_modal #dkim_domain').val(row.domain_name);
+                                $('#dkim_modal #dkim_domain').attr('disabled', 'true');
+                                $('#dkim_modal #dkim_keysize').val('4096');
+                                $('#dkim_modal #dkim_keysize').attr('disabled', 'true');
+                                $('#dkim_modal #dkim_publickey').html("");
+                                $('#dkim_modal #dkim_create').removeAttr('disabled');
+                                $('#dkim_modal').modal('show');
+                            } else {
+                                //populate modal + show modal
+                                $('#dkim_modal #dkim_error').hide();
+                                $('#dkim_modal #dkim_selector').val(data.selector);
+                                $('#dkim_modal #dkim_selector').attr('disabled', 'true');
+                                $('#dkim_modal #dkim_domain').val(data.domain);
+                                $('#dkim_modal #dkim_domain').attr('disabled', 'true');
+                                $('#dkim_modal #dkim_keysize').val(data.keysize);
+                                $('#dkim_modal #dkim_keysize').attr('disabled', 'true');
+                                $('#dkim_modal #dkim_publickey').html(data.public_key);
+                                $('#dkim_modal #dkim_create').attr('disabled', 'true');
+                                $('#dkim_modal').modal('show');
+                            }
+                        },
+                        error: function (request, status, error) {
+                            //show error
+                            $('#domains_error .error_text').html(request.status + " " + error);
+                            $('#domains_error').show();
+                        }
+                    });
                 }
             };
             window.users_table_events = {// catch table events here !
@@ -743,8 +828,7 @@
                 },
                 'click .user_remove': function (e, value, row, index) {
                     var names = [];
-                    names[0] = row.user_name + '@' + row.user_domain;
-                    console.log(names);
+                    names[0] = row.user_address;
                     remove_users(names);
                 }
             };
@@ -929,24 +1013,39 @@
                         </div>
                         <form>
                             <div class="row">
-                                <!--<div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <div class="form-group">
-                                        <label for="alias_address">Alias (virtual)</label>
-                                        <input type="text" class="form-control" id="alias_address" placeholder="<alias@domain.ext>">
+                                        <label for="alias_address">Selector</label>
+                                        <input type="text" class="form-control" id="dkim_selector" placeholder="mail._domainkey">
                                     </div>
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <div class="form-group">
-                                        <label for="alias_destination">Destination (existing user)</label>
-                                        <input type="text" class="form-control" id="alias_destination" placeholder="<existing@domain.ext>">
+                                        <label for="alias_destination">Domain</label>
+                                        <input type="text" class="form-control" id="dkim_domain" disabled="">
                                     </div>
-                                </div>-->
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="form-group">
+                                        <label for="alias_destination">Key size</label>
+                                        <select class="form-control" id="dkim_keysize">
+                                            <option value="1024" disabled="">1024</option>
+                                            <option value="2024" disabled="">2024</option>
+                                            <option value="4096" selected="">4096</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <p style="word-break: break-all;" id="dkim_publickey"></p>
+                                </div>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="alias_create">Create alias</button>
+                        <button type="button" class="btn btn-success" id="dkim_create">Make keys</button>
                     </div>
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->

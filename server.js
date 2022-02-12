@@ -72,7 +72,7 @@ var docker = new Docker({
     currentWorkingDirectory: undefined, // uses current working directory
     echo: false, // echo command output to stdout/stderr
     env: undefined,
-    stdin: undefined,
+    stdin: undefined
 });
 
 //TODO Basic auth
@@ -137,12 +137,12 @@ app.put('/users', function (req, res) {
     check_auth(req, res, function (result) {
         if (result) {
             var user_name = req.body.user_name || "";
-            var existing_user_name = req.body.user_name || "";
+            var existing_user_name = req.body.existing_user_name || "";
             var domain_name = req.body.domain_name || "";
             var user_password = req.body.user_password || "";
-            var user_can_receive = req.body.user_can_receive || "";
-            var user_can_send = req.body.user_can_send || "";
-            var user_is_admin = req.body.user_is_admin || "";
+            var user_can_receive = req.body.user_can_receive || "off";
+            var user_can_send = req.body.user_can_send || "off";
+            var user_is_admin = req.body.user_is_admin || "off";
             console.log(user_can_receive);
             if (existing_user_name === "") {//add new user
                 docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) {
@@ -160,6 +160,8 @@ app.put('/users', function (req, res) {
                 });
             } else {
                 //TODO set user restrictions
+                
+                //TODO admin system
             }
         } else
             res.status(403).send();
@@ -232,8 +234,45 @@ app.delete('/alias', function (req, res) {
 app.get('/dkim', function (req, res) {
     check_auth(req, res, function (result) {
         if (result) {
-            gen_dkim(function (results) {
-                res.send(JSON.stringify({results}));
+            var domain = req.query.domain || '';
+            if (fs.existsSync(CONFIG_DIR + "/opendkim/keys/" + domain + "/mail.txt")) {
+            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) {
+                if (err)
+                    res.send(JSON.stringify({error: err}));
+                else {
+                    //parse output should always be in that format TODO test with different keysize
+                    var test = data.raw.split('\t');//0: selector, 1: IN, 2: TXT, 3...: public_key
+                    var keysize = 4096;
+                    var selector = test[0];
+                    var public_key = "";
+                    for(let i = 3; i < test.length; i++)
+                        public_key += test[i].replace ('( \"','').replace('\"\n','').replace('  \"','').split('\" )  ;')[0];
+                    public_key = public_key.split('\" )  ;')[0];
+                    res.send(JSON.stringify({raw: data.raw, selector: selector, domain: domain, keysize: keysize, public_key: public_key}));
+                }
+            });
+        } else { //no key
+            res.send(JSON.stringify({error: "No key found for this domain, please make keys !"}));
+        }
+        } else
+            res.status(403).send();
+    });
+});
+app.post('/dkim', function (req, res) {
+    check_auth(req, res, function (result) {
+        if (result) {
+            var selector = req.body.selector || null;
+            var domain = req.body.domain || null;
+            var keysize = req.body.keysize || null;
+            var command_parts = "";
+            if (keysize)
+                command_parts += " keysize " + keysize;
+            if (selector)
+                command_parts += " selector " + selector;
+            if (domain)
+                command_parts += " domain " + domain;
+            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim' + command_parts).then(function (data, err) {
+                res.send(JSON.stringify({message: data, error: err}));
             });
         } else
             res.status(403).send();
@@ -265,9 +304,6 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
                     results[domain_index].alias_count = alias_count;
                     results[domain_index].mails_count = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + domains_result[i]), false);
                     results[domain_index].kdim_created = fs.existsSync(CONFIG_DIR + "/opendkim/keys/" + domains_result[i] + "/mail.private");
-                    //TODO find how to gat public key
-//                    if (results[domain_index].kdim_created)
-//                        results[domain_index].kdim_public = readFileSync(CONFIG_DIR + "/opendkim/keys/" + domains_result[i] + "/mail.txt");
                     domain_index++;
                 }
             }
