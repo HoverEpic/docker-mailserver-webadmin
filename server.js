@@ -1,16 +1,13 @@
 'use strict';
 //init app
-const xss = require("xss");
+const config = require('config');
+//const xss = require("xss");
 const express = require('express');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const path = require('path');
 const auth = require('basic-auth');
 const fs = require('fs-extra');
-const util = require('util');
-const moment = require('moment');
-const async = require('async');
-const archiver = require('archiver');
 const dockerCLI = require('docker-cli-js');
 
 // override console
@@ -27,19 +24,15 @@ console.error = function () {
     error.apply(console, [new Date().toISOString().replace('T', ' ').substr(0, 19) + " > " + first_parameter].concat(other_parameters));
 };
 
-const HOST = "0.0.0.0";
-const PORT = 8080;
-
-const DOCKER_MAILSERVER_NAME = "mailserver";
-
-const CONFIG_DIR = "./dms_data/config";
-const MAIL_DATA_DIR = "./dms_data/mail-data";
-const MAIL_STATE_DIR = "./dms_data/mail-state";
-const MAIL_LOGS_DIR = "./dms_data/mail-logs";
-
-//var AUTH = ["username": {
-//                "password": "password"
-//            }]
+// TODO config
+const PORT = config.get('config.server.port');
+const HOST = config.get('config.server.host');
+const DOCKER_MAILSERVER_NAME = config.get('config.docker-mailserver');
+const CONFIG_DIR = config.get('config.path.dsm-config');
+const MAIL_DATA_DIR = config.get('config.path.dsm-mail-data');
+const MAIL_STATE_DIR = config.get('config.path.dsm-mail-state');
+const MAIL_LOGS_DIR = config.get('config.path.dsm-mail-logs');
+const WEB_ADMINS = [""]; //TODO admins system 
 
 var app = express();
 
@@ -50,17 +43,18 @@ app.use(bodyParser.urlencoded({// to support URL-encoded bodies
 }));
 
 // templating
-app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'html');
 
 //security
 app.use(helmet());
 app.disable('x-powered-by');
 
+//start express
 app.listen(PORT, HOST, function () {
     console.log(`Running on http://${HOST}:${PORT}`);
 });
 
+//stop express
 process.on('SIGINT', function () {
     process.exit(0);
 });
@@ -78,18 +72,27 @@ var docker = new Docker({
 
 //TODO Basic auth
 var check_auth = function (req, res, result) {
-    return result(true);
-//    var user = auth(req);
-//    if (!user || !AUTH[user.name] || AUTH[user.name].password !== user.pass) {
-//        res.statusCode = 401;
-//        res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-//        res.end('Access denied');
-//        var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-//        console.log("access denied for " + ip + " user=" + (!user ? "undefined" : user.name));
-//        return result(false);
-//    } else {
-//        return result(user);
-//    }
+    var user = auth(req);
+    var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    if (!user) { //send client auth
+        res.statusCode = 401;
+        res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+        res.end('Access denied');
+//        console.log("auth asked for " + ip);
+        return result(false);
+    }
+    check_user(user.name, user.pass, function (auth_result) {
+        if (auth_result && WEB_ADMINS.indexOf(user.name) > -1) {
+//            console.log("auth succeeded for " + ip + " user=" + (!user ? "undefined" : user.name));
+            return result(user);
+        } else {
+            res.statusCode = 401;
+            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+            res.end('Access denied');
+            console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
+            return result(false);
+        }
+    });
 };
 
 // the main page
@@ -100,6 +103,15 @@ app.get('/', function (req, res) {
         else
             res.status(403).send();
     });
+});
+
+// the main page
+app.get('/logout', function (req, res) {
+    res.status(401).send([
+        'You are now logged out.',
+        '&lt;br/>',
+        '<a href="./">Return to the secure page. You will have to log in again.</a>'
+    ].join(''));
 });
 
 //get domains
@@ -146,14 +158,14 @@ app.put('/users', function (req, res) {
             var user_is_admin = req.body.user_is_admin || "off";
             console.log(user_can_receive);
             if (existing_user_name === "") {//add new user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) {
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) { //TODO fix docker
                     if (err)
                         res.send(JSON.stringify({error: err}));
                     else
                         res.send(JSON.stringify({message: "User added !"}));
                 });
             } else if (user_password !== "") {//update password user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) {
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) { //TODO fix docker
                     if (err)
                         res.send(JSON.stringify({error: err}));
                     else
@@ -176,7 +188,7 @@ app.delete('/users', function (req, res) {
                 res.status(200).send();
             else {
                 for (let i = 0; i < names.length; i++) {
-                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email del ' + names[i]).then(function (data, err) {});
+                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email del ' + names[i]).then(function (data, err) {}); //TODO fix docker
                 }
                 res.send(JSON.stringify({message: "Users(s) deleted !"}));
             }
@@ -205,7 +217,7 @@ app.put('/alias', function (req, res) {
         if (result) {
             var alias_address = req.body.alias_address || "";
             var alias_destination = req.body.alias_destination || "";
-            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias add ' + alias_address + ' ' + alias_destination).then(function (data, err) {
+            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias add ' + alias_address + ' ' + alias_destination).then(function (data, err) { //TODO fix docker
                 if (err)
                     res.send(JSON.stringify({error: err}));
                 else
@@ -223,7 +235,7 @@ app.delete('/alias', function (req, res) {
                 res.status(200).send();
             else {
                 for (let i = 0; i < alias.length; i++) {
-                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias del ' + alias[i]).then(function (data, err) {});
+                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias del ' + alias[i]).then(function (data, err) {}); //TODO fix docker
                 }
                 res.send(JSON.stringify({message: "Alias deleted !"}));
             }
@@ -237,7 +249,7 @@ app.get('/dkim', function (req, res) {
         if (result) {
             var domain = req.query.domain || '';
             if (fs.existsSync(CONFIG_DIR + "/opendkim/keys/" + domain + "/mail.txt")) {
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) {
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) { //TODO fix docker
                     if (err)
                         res.send(JSON.stringify({error: err}));
                     else {
@@ -272,7 +284,7 @@ app.post('/dkim', function (req, res) {
                 command_parts += " selector " + selector;
             if (domain)
                 command_parts += " domain " + domain;
-            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim' + command_parts).then(function (data, err) {
+            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim' + command_parts).then(function (data, err) { //TODO fix docker
                 res.send(JSON.stringify({message: data, error: err}));
             });
         } else
@@ -283,14 +295,17 @@ app.get('/logs', function (req, res) {
     check_auth(req, res, function (result) {
         if (result) {
             var file = req.query.file || '';
-            if (fs.existsSync(MAIL_LOGS_DIR + "/" + file)) {
-//                readFileAsync(MAIL_LOGS_DIR + "/" + file, function (logs_result) {
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /var/log/mail/' + file).then(function (data, err) {
+            if (file === "") {
+                getFilesAsync(MAIL_LOGS_DIR, function (logs_result) {
+                    res.send(JSON.stringify({data: logs_result}));
+                });
+            } else if (fs.existsSync(MAIL_LOGS_DIR + "/" + file)) {
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /var/log/mail/' + file).then(function (data, err) { //TODO fix docker
                     if (data.raw)
                         data = data.raw.split('\n');
                     res.send(JSON.stringify({data: data, error: err}));
                 });
-            } else { //no key
+            } else {
                 res.send(JSON.stringify({error: "No log file found !"}));
             }
         } else
@@ -391,7 +406,7 @@ var get_alias = function (limit, offset, sort, order, search, callback) {
     });
 };
 var gen_dkim = function (callback) {
-    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim').then(function (data, err) {
+    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim').then(function (data, err) { //TODO fix docker
         if (!err)
             callback(true);
         else
@@ -399,11 +414,24 @@ var gen_dkim = function (callback) {
     });
 };
 
-// read dir async
+//check if a username+password are register and can login on server
+var check_user = function (username, password, callback) {
+    if (!username || !password)
+        callback(false);
+    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' doveadm auth test ' + username + ' ' + password).then(
+            function (data) {// Success test
+                callback(true);
+            }, function (rejected) {// Failed test
+        callback(false);
+
+    });
+};
+
+// read dir async (only folders)
 const getDirAsync = (source, callback) =>
     fs.readdir(source, {withFileTypes: true}, (err, files) => {
         if (err) {
-            callback(err)
+            callback(err);
         } else {
             callback(
                     files
@@ -412,11 +440,25 @@ const getDirAsync = (source, callback) =>
                     );
         }
     });
-//read dir sync
+//read dir sync (only folders)
 const getDirSync = source =>
     fs.readdirSync(source, {withFileTypes: true})
             .filter(dirent => dirent.isDirectory())
             .map(dirent => dirent.name);
+
+// read dir async (files & folders)
+const getFilesAsync = (source, callback) =>
+    fs.readdir(source, {withFileTypes: true}, (err, files) => {
+        if (err) {
+            callback(err);
+        } else {
+            callback(
+                    files
+                    .map(dirent => dirent.name)
+                    );
+        }
+    });
+
 //read asyn file
 const readFileAsync = (file, callback) =>
     fs.readFile(file, 'utf8', function read(err, data) {

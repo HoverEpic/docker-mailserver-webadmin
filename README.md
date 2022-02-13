@@ -25,6 +25,7 @@ docker-compose up
  - all from mailserver (config/mail-data/mail-state/mail-logs)
  - /etc/localtime
  - /var/run/docker.sock
+ - /usr/src/app/config/
 
 Access with http://127.0.0.1:8080 in web browser or server address.
 
@@ -32,10 +33,11 @@ Access with http://127.0.0.1:8080 in web browser or server address.
  - fix docker compose build image (can't build on my system)
  - clean docker-compose.yml
  - quotas
- - admin system
+ - admin system (WIP)
  - interface refresh timers (async remove users & alias)
  - users restrictions (view/update)
  - better caching on client (domains, users)
+ - standalone change password page for all clients
 
 ## Plans :
  - web API ?

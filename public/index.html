@@ -198,7 +198,7 @@
                             <!--<li><a href="#"><i class="fa fa-fw fa-user"></i> Edit Profile</a></li>-->
                             <li><a href="#"><i class="fa fa-fw fa-cog"></i> Change Password</a></li>
                             <li class="divider"></li>
-                            <li><a href="#"><i class="fa fa-fw fa-power-off"></i> Logout</a></li>
+                            <li><a href="/logout"><i class="fa fa-fw fa-power-off"></i> Logout</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -680,6 +680,32 @@
                 });
 
                 //LOGS
+                //Fill logs file name
+                $.ajax({
+                    url: '/logs',
+                    type: 'GET',
+                    contentType: 'application/json',
+                    success: function (data) {
+                        data = JSON.parse(data);
+                        if (data.error) {
+                            $('#logs_error .error_text').html(data.error);
+                            $('#logs_error').show();
+                        } else {
+                            $('#logs_file').val('');
+                            $('#logs_file').html('');
+                            for (var i = 0; i < data.data.length; i++) {
+                                if (!data.data[i].endsWith('.gz'))
+                                    $('#logs_file').append("<option value='" + data.data[i] + "'>" + data.data[i] + "</option>");
+                            }
+                        }
+                    },
+                    error: function (request, status, error) {
+                        //show error
+                        $('#logs_error .error_text').html(request.status + " " + error);
+                        $('#logs_error').show();
+                    }
+                });
+                //display the selected log file
                 $("#logs_get").click(function () {
                     //empty log
                     $("#logs_lines").html("");

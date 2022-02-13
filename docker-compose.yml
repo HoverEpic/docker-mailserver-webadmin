@@ -25,6 +25,7 @@ services:
        - ./dms_data/config/:/tmp/docker-mailserver/
        - /etc/localtime:/etc/localtime:ro
        - ./certs/:/etc/letsencrypt/live/:ro
+       - ./dms_admin_config/:/usr/src/app/config/
       restart: always
       stop_grace_period: 1m
 #      cap_add:
