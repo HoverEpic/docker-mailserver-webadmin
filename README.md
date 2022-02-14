@@ -1,9 +1,12 @@
 # docker-mailserver-webadmin
-Quick and dirty docker-mailserver webadmin using NodeJS
+
+Quick and dirty [docker-mailserver](https://github.com/docker-mailserver/docker-mailserver) webadmin using NodeJS
+
+Standalone version of [jeboehm/docker-mailserver](https://github.com/jeboehm/docker-mailserver)
 
 => Read files for display, send docker exec for update
 
-/!\ do not expose on public internet
+/!\ do not expose on public internet, or, do it at your own risks. I'm not a security expert.
 
 ## Features :
  - manage domains (list/dkim)
@@ -13,16 +16,18 @@ Quick and dirty docker-mailserver webadmin using NodeJS
 
 ## Prerequisites :
  - Docker
- - docker-mailserver container (docker.io/mailserver/docker-mailserver:latest)
+ - [docker-mailserver](https://github.com/docker-mailserver/docker-mailserver) container
 
 ## Build :
-docker-compose --build
+docker-compose --build or ./docker_build.sh
 
-## Run :
+## Compose :
+### First edit docker-compose.yml with your own env
+
 docker-compose up
 
 ## Volumes :
- - all from mailserver (config/mail-data/mail-state/mail-logs)
+ - all from mailserver (config/mail-data/mail-logs)
  - /etc/localtime
  - /var/run/docker.sock
  - /usr/src/app/config/
@@ -30,9 +35,8 @@ docker-compose up
 Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
- - fix docker compose build image (can't build on my system)
- - clean docker-compose.yml
- - quotas
+ - fix docker compose build image (can't build/test on my system)
+ - users quotas
  - admin system (WIP)
  - interface refresh timers (async remove users & alias)
  - users restrictions (view/update)

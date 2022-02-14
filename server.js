@@ -28,10 +28,10 @@ console.error = function () {
 const PORT = config.get('config.server.port');
 const HOST = config.get('config.server.host');
 const DOCKER_MAILSERVER_NAME = config.get('config.docker-mailserver');
-const CONFIG_DIR = config.get('config.path.dsm-config');
-const MAIL_DATA_DIR = config.get('config.path.dsm-mail-data');
-const MAIL_STATE_DIR = config.get('config.path.dsm-mail-state');
-const MAIL_LOGS_DIR = config.get('config.path.dsm-mail-logs');
+const CONFIG_DIR = config.get('config.paths.dsm-config');
+const MAIL_DATA_DIR = config.get('config.paths.dsm-mail-data');
+const MAIL_STATE_DIR = config.get('config.paths.dsm-mail-state');
+const MAIL_LOGS_DIR = config.get('config.paths.dsm-mail-logs');
 const WEB_ADMINS = [""]; //TODO admins system 
 
 var app = express();
@@ -80,19 +80,20 @@ var check_auth = function (req, res, result) {
         res.end('Access denied');
 //        console.log("auth asked for " + ip);
         return result(false);
-    }
-    check_user(user.name, user.pass, function (auth_result) {
-        if (auth_result && WEB_ADMINS.indexOf(user.name) > -1) {
+    } else {
+        check_user(user.name, user.pass, function (auth_result) {
+            if (auth_result && WEB_ADMINS.indexOf(user.name) > -1) {
 //            console.log("auth succeeded for " + ip + " user=" + (!user ? "undefined" : user.name));
-            return result(user);
-        } else {
-            res.statusCode = 401;
-            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-            res.end('Access denied');
-            console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
-            return result(false);
-        }
-    });
+                return result(user);
+            } else {
+                res.statusCode = 401;
+                res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+                res.end('Access denied');
+                console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
+                return result(false);
+            }
+        });
+    }
 };
 
 // the main page
