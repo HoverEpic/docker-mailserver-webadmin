@@ -276,13 +276,7 @@
                                     <div class="col-lg-6">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="basic-addon3">Select a file</span>
-                                            <select class="form-control" id="logs_file"><!-- TODO scan logs dir to build this list -->
-                                                <option value="clamav.log">clamav.log</option>
-                                                <option value="freshclam.log">freshclam.log</option>
-                                                <option value="mail.log">mail.log</option>
-                                                <option value="mail.log.1">mail.log.1</option>
-                                                <option value="mail.log">mail.info</option>
-                                                <option value="mail.warn">mail.warn</option>
+                                            <select class="form-control" id="logs_file">
                                             </select>
                                             <span class="input-group-btn">
                                                 <button class="btn btn-default" id="logs_get" type="button">Go!</button>
@@ -397,13 +391,16 @@
                     ].join('');
                 }
 
-                //TODO store domains (for user create modal)
+                //store domains (for user create/update modal)
                 var domains = [];
                 $('#domains_table').on('load-success.bs.table', function (data, status, jqXHR) {
+                    $('#user_domain').html('');
                     var content = $('#domains_table').bootstrapTable('getData');
                     for (let i = 0; i < content.length; i++) {
-
+                        domains[i] = content[i].domain_name;
+                        $('#user_domain').append("<option value='" + content[i].domain_name + "'>" + content[i].domain_name + "</option>");
                     }
+                    $('#user_domain').append("<option value='other'>other</option>");
                 });
 
                 //USERS
@@ -480,12 +477,12 @@
                     ].join('');
                 }
 
-                //TODO store users
-                var domains = [];
+                //store users (for alias modal)
+                var users = [];
                 $('#users_table').on('load-success.bs.table', function (data, status, jqXHR) {
                     var content = $('#users_table').bootstrapTable('getData');
                     for (let i = 0; i < content.length; i++) {
-
+                        users[i] = content[i].user_address;
                     }
                 });
                 $("#user_add").click(function () {
@@ -494,6 +491,7 @@
                     $('#user_add_modal').modal('show');
                 });
                 $('#user_create').click(function () {
+                    var existing_user_name = $('#user_add_modal #existing_user_name').val()
                     var username = $('#user_add_modal #user_name').val();
                     var domain = $('#user_add_modal #user_domain').val();
                     if (domain === "other")
@@ -503,7 +501,7 @@
                     if (!validateName(username)) {//check user name
                         $('#user_add_modal #user_error .error_text').html("user should only contain letters, numbers & _");
                         $('#user_add_modal #user_error').show();
-                    } else if (password === "" && password !== $('#user_add_modal #user_repassword').val()) {//check user password
+                    } else if (password === "unchanged" && password !== $('#user_add_modal #user_repassword').val()) {//check user password
                         $('#user_add_modal #user_error .error_text').html("Passwords mismatched");
                         $('#user_add_modal #user_error').show();
                     } else if (!validateDomain(domain)) { //check domain
@@ -516,12 +514,12 @@
                             type: 'PUT',
                             data: JSON.stringify({
                                 user_name: username,
-                                existing_user_name: $('#user_add_modal #existing_user_name').val(),
+                                existing_user_name: existing_user_name,
                                 domain_name: domain,
                                 user_password: password,
-                                user_can_receive: $('#user_add_modal #user_can_receive').val(),
-                                user_can_send: $('#user_add_modal #user_can_send').val(),
-                                user_is_admin: $('#user_add_modal #user_is_admin').val()
+                                user_can_receive: !$('#user_add_modal #user_can_receive').parent().hasClass('off'),
+                                user_can_send: !$('#user_add_modal #user_can_send').parent().hasClass('off'),
+                                user_is_admin: !$('#user_add_modal #user_is_admin').parent().hasClass('off')
                             }),
                             contentType: 'application/json',
                             success: function (data) {
@@ -799,8 +797,8 @@
                 $('#user_add_modal #user_name').removeAttr("disabled");
                 $('#user_add_modal #user_domain').val("");
                 $('#user_add_modal #user_domain').removeAttr("disabled");
-                $('#user_add_modal #user_password').val("");
-                $('#user_add_modal #user_repassword').val("");
+                $('#user_add_modal #user_password').val("unchanged");
+                $('#user_add_modal #user_repassword').val("unchanged");
                 $('#user_add_modal #user_can_receive').bootstrapToggle('off');
                 $('#user_add_modal #user_can_send').bootstrapToggle('off');
                 $('#user_add_modal #user_is_admin').bootstrapToggle('off');
@@ -885,14 +883,14 @@
                     //populate modal
                     $('#user_add_modal #user_error').hide();
                     $('#user_add_modal .modal-title').html("Edit user");
-                    $('#user_add_modal #existing_user_name').val(row.user_name + '@' + row.user_domain);
-                    $('#user_add_modal #user_name').val(row.user_name);
+                    $('#user_add_modal #existing_user_name').val(row.user_address);
+                    $('#user_add_modal #user_name').val(row.user_address.split('@')[0]);
                     $('#user_add_modal #user_name').attr("disabled", "true");
-                    $('#user_add_modal #user_domain').val(row.user_domain);
+                    $('#user_add_modal #user_domain').val(row.user_address.split('@')[1]);
                     $('#user_add_modal #user_domain').attr("disabled", "true");
                     $('#user_add_modal #user_new_domain').attr("disabled", "true");
-                    $('#user_add_modal #user_password').val("secret");
-                    $('#user_add_modal #user_repassword').val("secret");
+                    $('#user_add_modal #user_password').val("unchanged");
+                    $('#user_add_modal #user_repassword').val("unchanged");
                     $('#user_add_modal #user_can_receive').bootstrapToggle(row.user_can_receive ? 'on' : 'off');
                     $('#user_add_modal #user_can_send').bootstrapToggle(row.user_can_send ? 'on' : 'off');
                     $('#user_add_modal #user_is_admin').bootstrapToggle(row.user_is_admin ? 'on' : 'off');
@@ -933,9 +931,7 @@
                                         <span class="input-group-addon" id="basic-user_name-addon">Username</span>
                                         <input type="text" class="form-control" id="user_name" placeholder="<username>" autocomplete="off">
                                         <span class="input-group-addon" id="basic-user_domain-addon">@</span>
-                                        <select class="form-control" id="user_domain"><!-- TODO scan domains to build this list -->
-                                            <option value="balek.tk">balek.tk</option>
-                                            <option value="coulon.tk">coulon.tk</option>
+                                        <select class="form-control" id="user_domain">
                                             <option value="other">other</option>
                                         </select>
                                     </div>

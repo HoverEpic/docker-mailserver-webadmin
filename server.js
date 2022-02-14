@@ -24,15 +24,15 @@ console.error = function () {
     error.apply(console, [new Date().toISOString().replace('T', ' ').substr(0, 19) + " > " + first_parameter].concat(other_parameters));
 };
 
-// TODO config
-const PORT = config.get('config.server.port');
-const HOST = config.get('config.server.host');
+const APP_PORT = config.get('config.server.port');
+const APP_HOST = config.get('config.server.host');
+const APP_CONFIG = "./config/admins.json";
+var APP_WEB_ADMINS = [""]; //admins system 
 const DOCKER_MAILSERVER_NAME = config.get('config.docker-mailserver');
-const CONFIG_DIR = config.get('config.paths.dsm-config');
+const MAIL_CONFIG_DIR = config.get('config.paths.dsm-config');
 const MAIL_DATA_DIR = config.get('config.paths.dsm-mail-data');
 const MAIL_STATE_DIR = config.get('config.paths.dsm-mail-state');
 const MAIL_LOGS_DIR = config.get('config.paths.dsm-mail-logs');
-const WEB_ADMINS = [""]; //TODO admins system 
 
 var app = express();
 
@@ -50,8 +50,8 @@ app.use(helmet());
 app.disable('x-powered-by');
 
 //start express
-app.listen(PORT, HOST, function () {
-    console.log(`Running on http://${HOST}:${PORT}`);
+app.listen(APP_PORT, APP_HOST, function () {
+    console.log(`Running on http://${APP_PORT}:${APP_HOST}`);
 });
 
 //stop express
@@ -70,7 +70,9 @@ var docker = new Docker({
     stdin: undefined
 });
 
-//TODO Basic auth
+load_admins();
+
+//Basic auth
 var check_auth = function (req, res, result) {
     var user = auth(req);
     var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -82,7 +84,7 @@ var check_auth = function (req, res, result) {
         return result(false);
     } else {
         check_user(user.name, user.pass, function (auth_result) {
-            if (auth_result && WEB_ADMINS.indexOf(user.name) > -1) {
+            if (auth_result && APP_WEB_ADMINS.indexOf(user.name) > -1) {
 //            console.log("auth succeeded for " + ip + " user=" + (!user ? "undefined" : user.name));
                 return result(user);
             } else {
@@ -154,10 +156,10 @@ app.put('/users', function (req, res) {
             var existing_user_name = req.body.existing_user_name || "";
             var domain_name = req.body.domain_name || "";
             var user_password = req.body.user_password || "";
-            var user_can_receive = req.body.user_can_receive || "off";
-            var user_can_send = req.body.user_can_send || "off";
-            var user_is_admin = req.body.user_is_admin || "off";
-            console.log(user_can_receive);
+            var user_can_receive = req.body.user_can_receive || false;
+            var user_can_send = req.body.user_can_send || false;
+            var user_is_admin = req.body.user_is_admin || false;
+            console.log(user_is_admin);
             if (existing_user_name === "") {//add new user
                 docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) { //TODO fix docker
                     if (err)
@@ -165,18 +167,24 @@ app.put('/users', function (req, res) {
                     else
                         res.send(JSON.stringify({message: "User added !"}));
                 });
-            } else if (user_password !== "") {//update password user
+            } else if (user_password !== "unchanged") {//update password user
                 docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) { //TODO fix docker
                     if (err)
                         res.send(JSON.stringify({error: err}));
                     else
                         res.send(JSON.stringify({message: "User added !"}));
                 });
-            } else {
-                //TODO set user restrictions
-
-                //TODO admin system
             }
+            //TODO set user restrictions
+
+            //admin system
+            if (user_is_admin)
+                add_admin(user_name + '@' + domain_name);
+            else
+                del_admin(user_name + '@' + domain_name);
+            save_admins();
+            
+            res.send(JSON.stringify({message: "User updated !"}));
         } else
             res.status(403).send();
     });
@@ -249,7 +257,7 @@ app.get('/dkim', function (req, res) {
     check_auth(req, res, function (result) {
         if (result) {
             var domain = req.query.domain || '';
-            if (fs.existsSync(CONFIG_DIR + "/opendkim/keys/" + domain + "/mail.txt")) {
+            if (fs.existsSync(MAIL_CONFIG_DIR + "/opendkim/keys/" + domain + "/mail.txt")) {
                 docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) { //TODO fix docker
                     if (err)
                         res.send(JSON.stringify({error: err}));
@@ -326,7 +334,7 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
                     results[domain_index].domain_name = domains_result[i];
                     results[domain_index].users_count = getDirSync(MAIL_DATA_DIR + "/" + domains_result[i]).length;
                     var alias_count = 0;
-                    var alias_file_lines = readFileSync(CONFIG_DIR + "/postfix-virtual.cf");
+                    var alias_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-virtual.cf");
                     if (alias_file_lines.length > 0) {
                         for (var j = offset; j < (alias_file_lines.length > limit ? limit : alias_file_lines.length); j++) {
                             var line = alias_file_lines[j].toString();
@@ -338,7 +346,7 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
                     }
                     results[domain_index].alias_count = alias_count;
                     results[domain_index].mails_count = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + domains_result[i]), false);
-                    results[domain_index].kdim_created = fs.existsSync(CONFIG_DIR + "/opendkim/keys/" + domains_result[i] + "/mail.private");
+                    results[domain_index].kdim_created = fs.existsSync(MAIL_CONFIG_DIR + "/opendkim/keys/" + domains_result[i] + "/mail.private");
                     domain_index++;
                 }
             }
@@ -348,9 +356,9 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
 };
 var get_users = function (limit, offset, sort, order, search, callback) {
     var results = [];
-    readFileAsync(CONFIG_DIR + "/postfix-accounts.cf", function (users_result) {
+    readFileAsync(MAIL_CONFIG_DIR + "/postfix-accounts.cf", function (users_result) {
         if (users_result.length > 0) {
-            var alias_file_lines = readFileSync(CONFIG_DIR + "/postfix-virtual.cf");
+            var alias_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-virtual.cf");
             var j = 0;
             for (var i = offset; i < (users_result.length > limit ? limit : users_result.length); i++) {
                 var line = users_result[i].toString();
@@ -378,8 +386,8 @@ var get_users = function (limit, offset, sort, order, search, callback) {
                     //TODO get user restrictions
                     results[j].can_receive = true;
                     results[j].can_send = true;
-                    //TODO create admin system
-                    results[j].user_is_admin = false;
+                    //admin system
+                    results[j].user_is_admin = is_admin(address);
                     j++;
                 }
             }
@@ -389,7 +397,7 @@ var get_users = function (limit, offset, sort, order, search, callback) {
 };
 var get_alias = function (limit, offset, sort, order, search, callback) {
     var results = [];
-    readFileAsync(CONFIG_DIR + "/postfix-virtual.cf", function (alias_result) {
+    readFileAsync(MAIL_CONFIG_DIR + "/postfix-virtual.cf", function (alias_result) {
         if (alias_result.length > 0) {
             var j = 0;
             for (var i = offset; i < (alias_result.length > limit ? limit : alias_result.length); i++) {
@@ -427,6 +435,40 @@ var check_user = function (username, password, callback) {
 
     });
 };
+
+function load_admins() {
+    fs.readFile(APP_CONFIG, 'utf8', function read(err, data) {
+        if (err) { //file not exist
+            fs.writeFileSync(APP_CONFIG, JSON.stringify(APP_WEB_ADMINS));
+            console.log("Config created.");
+        } else {
+            APP_WEB_ADMINS = JSON.parse(data);
+            console.log("Config loaded.");
+        }
+    });
+}
+
+function save_admins() {
+    fs.writeFileSync(APP_CONFIG, JSON.stringify(APP_WEB_ADMINS));
+    console.log("Config saved.");
+}
+
+function is_admin(address) {
+    const index = APP_WEB_ADMINS.indexOf(address);
+    return index > -1;
+}
+
+function add_admin(address) {
+    if (!is_admin(address))
+        APP_WEB_ADMINS.push(address);
+}
+
+function del_admin(address) {
+    const index = APP_WEB_ADMINS.indexOf(address);
+    if (index > -1) {
+        APP_WEB_ADMINS.splice(index, 1); // 2nd parameter means remove one item only
+    }
+}
 
 // read dir async (only folders)
 const getDirAsync = (source, callback) =>
