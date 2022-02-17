@@ -531,6 +531,7 @@
                                     $('#user_add_modal #user_error').show();
                                 } else {
                                     // hide modal + update table + reset modal
+                                    //TODO WAIT 2s
                                     $('#user_add_modal').modal('hide');
                                     $('#users_table').bootstrapTable('refresh', {silent: true});
                                     reset_user_modal();
@@ -624,6 +625,7 @@
                                     $('#alias_add_modal #alias_error').show();
                                 } else {
                                     //hide modal + update table + reset modal
+                                    ////TODO WAIT 2s
                                     $('#alias_add_modal').modal('hide');
                                     $('#alias_table').bootstrapTable('refresh', {silent: true});
                                     reset_alias_modal();
@@ -665,6 +667,7 @@
                                 $('#dkim_modal #dkim_error').show();
                             } else {
                                 //hide modal + update table + reset modal
+                                //TODO WAIT 2s
                                 $('#dkim_modal').modal('hide');
                                 $('#domains_table').bootstrapTable('refresh', {silent: true});
                                 $('#dkim_modal #dkim_error').hide();
@@ -748,7 +751,8 @@
                                 $('#users_error .error_text').html(data.error);
                                 $('#users_error').show();
                             } else {
-                                //hide modal + update table (TODO wait 2s)
+                                //hide modal + update table
+                                //TODO WAIT 2s
                                 $('#users_table').bootstrapTable('refresh', {silent: true});
                                 $('#users_error').hide();
 
@@ -777,7 +781,8 @@
                                 $('#alias2_error .error_text').html(data.error);
                                 $('#alias2_error').show();
                             } else {
-                                //hide modal + update table (TODO wait 2s)
+                                //hide modal + update table
+                                //TODO WAIT 2s
                                 $('#alias_table').bootstrapTable('refresh', {silent: true});
                                 $('#alias2_error').hide();
                             }
@@ -1025,7 +1030,7 @@
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label for="alias_destination">Destination (existing user)</label><!-- TODO scan domains to a list -->
+                                        <label for="alias_destination">Destination (existing user)</label><!-- TODO scan users to a list -->
                                         <input type="text" class="form-control" id="alias_destination" placeholder="<existing@domain.ext>">
                                     </div>
                                 </div>
@@ -1078,7 +1083,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-sm-12">
-                                    <p style="word-break: break-all;" id="dkim_publickey"></p>
+                                    <pre style="white-space:pre-wrap; word-wrap:break-word;" id="dkim_publickey"></pre>
                                 </div>
                             </div>
                         </form>

@@ -27,13 +27,13 @@ console.error = function () {
 const APP_PORT = config.get('config.server.port');
 const APP_HOST = config.get('config.server.host');
 const APP_CONFIG = "./config/admins.json";
-var APP_WEB_ADMINS = [""]; //admins system 
 const DOCKER_MAILSERVER_NAME = config.get('config.docker-mailserver');
 const MAIL_CONFIG_DIR = config.get('config.paths.dsm-config');
 const MAIL_DATA_DIR = config.get('config.paths.dsm-mail-data');
 const MAIL_STATE_DIR = config.get('config.paths.dsm-mail-state');
 const MAIL_LOGS_DIR = config.get('config.paths.dsm-mail-logs');
 
+var APP_WEB_ADMINS = [""]; //admins system
 var app = express();
 
 // enable POST request decoding
@@ -51,7 +51,7 @@ app.disable('x-powered-by');
 
 //start express
 app.listen(APP_PORT, APP_HOST, function () {
-    console.log(`Running on http://${APP_PORT}:${APP_HOST}`);
+    console.log(`Running on http://${APP_HOST}:${APP_PORT}`);
 });
 
 //stop express
@@ -70,6 +70,7 @@ var docker = new Docker({
     stdin: undefined
 });
 
+//load things in cache
 load_admins();
 
 //Basic auth
@@ -159,31 +160,29 @@ app.put('/users', function (req, res) {
             var user_can_receive = req.body.user_can_receive || false;
             var user_can_send = req.body.user_can_send || false;
             var user_is_admin = req.body.user_is_admin || false;
-            console.log(user_is_admin);
+            var address = user_name + '@' + domain_name;
             if (existing_user_name === "") {//add new user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) { //TODO fix docker
-                    if (err)
-                        res.send(JSON.stringify({error: err}));
-                    else
-                        res.send(JSON.stringify({message: "User added !"}));
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + address + ' ' + user_password).then(
+                        function (data) {// Success
+                            res.send(JSON.stringify({message: "User added !"}));
+                        }, function (rejected) {// Failed
+                    res.send(JSON.stringify({error: rejected}));
                 });
             } else if (user_password !== "unchanged") {//update password user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + user_name + '@' + domain_name + ' ' + user_password).then(function (data, err) { //TODO fix docker
-                    if (err)
-                        res.send(JSON.stringify({error: err}));
-                    else
-                        res.send(JSON.stringify({message: "User added !"}));
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + address + ' ' + user_password).then(
+                        function (data) {// Success
+                            res.send(JSON.stringify({message: "User updated !"}));
+                        }, function (rejected) {// Failed
+                    res.send(JSON.stringify({error: rejected}));
                 });
             }
-            //TODO set user restrictions
+            //set user restrictions
+            set_can_receive(address, user_can_receive);
+            set_can_send(address, user_can_send);
 
             //admin system
-            if (user_is_admin)
-                add_admin(user_name + '@' + domain_name);
-            else
-                del_admin(user_name + '@' + domain_name);
-            save_admins();
-            
+            set_is_admin(address, user_is_admin);
+
             res.send(JSON.stringify({message: "User updated !"}));
         } else
             res.status(403).send();
@@ -197,7 +196,7 @@ app.delete('/users', function (req, res) {
                 res.status(200).send();
             else {
                 for (let i = 0; i < names.length; i++) {
-                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email del ' + names[i]).then(function (data, err) {}); //TODO fix docker
+                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email del ' + names[i]).then(function (data) {});
                 }
                 res.send(JSON.stringify({message: "Users(s) deleted !"}));
             }
@@ -226,11 +225,11 @@ app.put('/alias', function (req, res) {
         if (result) {
             var alias_address = req.body.alias_address || "";
             var alias_destination = req.body.alias_destination || "";
-            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias add ' + alias_address + ' ' + alias_destination).then(function (data, err) { //TODO fix docker
-                if (err)
-                    res.send(JSON.stringify({error: err}));
-                else
-                    res.send(JSON.stringify({message: "Alias added !"}));
+            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias add ' + alias_address + ' ' + alias_destination).then(
+                    function (data) {
+                        res.send(JSON.stringify({message: "Alias added !"}));
+                    }, function (rejected) {
+                res.send(JSON.stringify({error: rejected}));
             });
         } else
             res.status(403).send();
@@ -244,7 +243,7 @@ app.delete('/alias', function (req, res) {
                 res.status(200).send();
             else {
                 for (let i = 0; i < alias.length; i++) {
-                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias del ' + alias[i]).then(function (data, err) {}); //TODO fix docker
+                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup alias del ' + alias[i]).then(function (data) {}, function (rejected) {});
                 }
                 res.send(JSON.stringify({message: "Alias deleted !"}));
             }
@@ -258,20 +257,19 @@ app.get('/dkim', function (req, res) {
         if (result) {
             var domain = req.query.domain || '';
             if (fs.existsSync(MAIL_CONFIG_DIR + "/opendkim/keys/" + domain + "/mail.txt")) {
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(function (data, err) { //TODO fix docker
-                    if (err)
-                        res.send(JSON.stringify({error: err}));
-                    else {
-                        //parse output should always be in that format TODO test with different keysize
-                        var test = data.raw.split('\t');//0: selector, 1: IN, 2: TXT, 3...: public_key
-                        var keysize = 4096;
-                        var selector = test[0];
-                        var public_key = "";
-                        for (let i = 3; i < test.length; i++)
-                            public_key += test[i].replace('( \"', '').replace('\"\n', '').replace('  \"', '').split('\" )  ;')[0];
-                        public_key = public_key.split('\" )  ;')[0];
-                        res.send(JSON.stringify({raw: data.raw, selector: selector, domain: domain, keysize: keysize, public_key: public_key}));
-                    }
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /tmp/docker-mailserver/opendkim/keys/' + domain + '/mail.txt').then(
+                        function (data) {
+                            //parse output should always be in that format TODO test with different keysize
+                            var test = data.raw.split('\t');//0: selector, 1: IN, 2: TXT, 3...: public_key
+                            var keysize = 4096;
+                            var selector = test[0];
+                            var public_key = "";
+                            for (let i = 3; i < test.length; i++)
+                                public_key += test[i].replace('( \"', '').replace('\"\n', '').replace('  \"', '').split('\" )  ;')[0];
+                            public_key = public_key.split('\" )  ;')[0];
+                            res.send(JSON.stringify({raw: data.raw, selector: selector, domain: domain, keysize: keysize, public_key: public_key}));
+                        }, function (rejected) {
+                    res.send(JSON.stringify({error: rejected}));
                 });
             } else { //no key
                 res.send(JSON.stringify({error: "No key found for this domain, please make keys !"}));
@@ -293,8 +291,11 @@ app.post('/dkim', function (req, res) {
                 command_parts += " selector " + selector;
             if (domain)
                 command_parts += " domain " + domain;
-            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim' + command_parts).then(function (data, err) { //TODO fix docker
-                res.send(JSON.stringify({message: data, error: err}));
+            docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim' + command_parts).then(
+                    function (data) {
+                        res.send(JSON.stringify({message: data}));
+                    }, function (rejected) {
+                res.send(JSON.stringify({error: rejected}));
             });
         } else
             res.status(403).send();
@@ -309,10 +310,13 @@ app.get('/logs', function (req, res) {
                     res.send(JSON.stringify({data: logs_result}));
                 });
             } else if (fs.existsSync(MAIL_LOGS_DIR + "/" + file)) {
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /var/log/mail/' + file).then(function (data, err) { //TODO fix docker
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /var/log/mail/' + file).then(
+                        function (data) {
                     if (data.raw)
                         data = data.raw.split('\n');
-                    res.send(JSON.stringify({data: data, error: err}));
+                    res.send(JSON.stringify({data: data}));
+                }, function (rejected) {
+                    res.send(JSON.stringify({error: rejected}));
                 });
             } else {
                 res.send(JSON.stringify({error: "No log file found !"}));
@@ -383,9 +387,9 @@ var get_users = function (limit, offset, sort, order, search, callback) {
                         }
                     }
                     results[j].user_alias = alias;
-                    //TODO get user restrictions
-                    results[j].can_receive = true;
-                    results[j].can_send = true;
+                    //get user restrictions
+                    results[j].user_can_receive = can_receive(address);
+                    results[j].user_can_send = can_send(address);
                     //admin system
                     results[j].user_is_admin = is_admin(address);
                     j++;
@@ -395,6 +399,48 @@ var get_users = function (limit, offset, sort, order, search, callback) {
         callback(results);
     });
 };
+function can_receive(email) {
+    var receive_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-receive-access.cf");
+    if (receive_file_lines.length > 0) {
+        for (var i = 0; i < receive_file_lines.length; i++) {
+            var line = receive_file_lines[i].toString();
+            var file_line = line.split(' \t\t ');
+            var line_email = file_line[0];
+            if (line_email === email)
+                return false;
+        }
+    }
+    return true;
+}
+function set_can_receive(email, value) {
+    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email restrict ' + (value ? 'del' : 'add') + ' receive ' + email).then(
+            function (data) {// Success
+
+            }, function (rejected) {// Failed
+
+    });
+}
+function can_send(email) {
+    var send_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-send-access.cf");
+    if (send_file_lines.length > 0) {
+        for (var i = 0; i < send_file_lines.length; i++) {
+            var line = send_file_lines[i].toString();
+            var file_line = line.split(' \t\t ');
+            var line_email = file_line[0];
+            if (line_email === email)
+                return false;
+        }
+    }
+    return true;
+}
+function set_can_send(email, value) {
+    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email restrict ' + (value ? 'del' : 'add') + ' send ' + email).then(
+            function (data) {// Success
+
+            }, function (rejected) {// Failed
+
+    });
+}
 var get_alias = function (limit, offset, sort, order, search, callback) {
     var results = [];
     readFileAsync(MAIL_CONFIG_DIR + "/postfix-virtual.cf", function (alias_result) {
@@ -415,11 +461,11 @@ var get_alias = function (limit, offset, sort, order, search, callback) {
     });
 };
 var gen_dkim = function (callback) {
-    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim').then(function (data, err) { //TODO fix docker
-        if (!err)
-            callback(true);
-        else
-            callback({error: err});
+    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup config dkim').then(
+            function (data) {// Success
+                callback(true);
+            }, function (rejected) {// Failed
+        callback({error: rejected});
     });
 };
 
@@ -440,22 +486,29 @@ function load_admins() {
     fs.readFile(APP_CONFIG, 'utf8', function read(err, data) {
         if (err) { //file not exist
             fs.writeFileSync(APP_CONFIG, JSON.stringify(APP_WEB_ADMINS));
-            console.log("Config created.");
+            console.log("Admins list created.");
         } else {
             APP_WEB_ADMINS = JSON.parse(data);
-            console.log("Config loaded.");
+            console.log("Admins list loaded.");
         }
     });
 }
 
 function save_admins() {
     fs.writeFileSync(APP_CONFIG, JSON.stringify(APP_WEB_ADMINS));
-    console.log("Config saved.");
 }
 
 function is_admin(address) {
     const index = APP_WEB_ADMINS.indexOf(address);
     return index > -1;
+}
+
+function set_is_admin(address, value) {
+    if (value)
+        add_admin(address);
+    else
+        del_admin(address);
+    save_admins();
 }
 
 function add_admin(address) {
