@@ -159,6 +159,7 @@ app.put('/users', function (req, res) {
             var user_password = req.body.user_password || "";
             var user_can_receive = req.body.user_can_receive || false;
             var user_can_send = req.body.user_can_send || false;
+            var user_quota = req.body.user_quota || 0;
             var user_is_admin = req.body.user_is_admin || false;
             var address = user_name + '@' + domain_name;
             if (existing_user_name === "") {//add new user
@@ -179,6 +180,9 @@ app.put('/users', function (req, res) {
             //set user restrictions
             set_can_receive(address, user_can_receive);
             set_can_send(address, user_can_send);
+            
+            //quota
+            set_quota(address, user_quota);
 
             //admin system
             set_is_admin(address, user_is_admin);
@@ -349,7 +353,7 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
                         }
                     }
                     results[domain_index].alias_count = alias_count;
-                    results[domain_index].mails_count = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + domains_result[i]), false);
+                    results[domain_index].mails_size = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + domains_result[i]), true);
                     results[domain_index].kdim_created = fs.existsSync(MAIL_CONFIG_DIR + "/opendkim/keys/" + domains_result[i] + "/mail.private");
                     domain_index++;
                 }
@@ -371,8 +375,10 @@ var get_users = function (limit, offset, sort, order, search, callback) {
                     var parts = address.split("@");
                     results[j] = {};
                     results[j].user_address = address;
+                    //get quota
+                    results[j].user_space = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + parts[1] + "/" + parts[0]), true);
+                    results[j].user_quota = get_quota(address);
                     //get alias
-                    results[j].user_mails_count = humanFileSize(getTotalSize(MAIL_DATA_DIR + "/" + parts[1] + "/" + parts[0]), false);
                     var alias = [];
                     var l = 0;
                     if (alias_file_lines.length > 0) {
@@ -435,6 +441,27 @@ function can_send(email) {
 }
 function set_can_send(email, value) {
     docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email restrict ' + (value ? 'del' : 'add') + ' send ' + email).then(
+            function (data) {// Success
+
+            }, function (rejected) {// Failed
+
+    });
+}
+function get_quota(email) {
+    var quota_file_lines = readFileSync(MAIL_CONFIG_DIR + "/dovecot-quotas.cf");
+    if (quota_file_lines.length > 0) {
+        for (var i = 0; i < quota_file_lines.length; i++) {
+            var line = quota_file_lines[i].toString();
+            var file_line = line.split(':');
+            var line_email = file_line[0];
+            if (line_email === email)
+                return file_line[1];
+        }
+    }
+    return '∞';
+}
+function set_quota(email, value) {
+    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup quota ' + (value !== 0 ? 'set' : 'del') + ' ' + email + (value !== 0 ? ' ' + value : '')).then(
             function (data) {// Success
 
             }, function (rejected) {// Failed
@@ -600,14 +627,14 @@ function humanFileSize(bytes, si) {
         return bytes + ' B';
     }
     var units = si
-            ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+            ? ['k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
             : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
     var u = -1;
     do {
         bytes /= thresh;
         ++u;
     } while (Math.abs(bytes) >= thresh && u < units.length - 1);
-    return bytes.toFixed(1) + ' ' + units[u];
+    return bytes.toFixed(1) + units[u];
 }
 
 //var test = get_users(10, 0, "order.toUpperCase()", "sort", "", function (results) {});

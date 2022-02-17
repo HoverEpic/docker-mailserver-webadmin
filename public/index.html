@@ -333,6 +333,17 @@
                     }
                 });
 
+                $('#user_add_modal #user_enable_quota').change(function () {
+                    var quota = $(this).parent().hasClass('off');
+                    if (!quota) {
+                        $('#user_add_modal #user_quota_number').removeAttr("disabled");
+                        $('#user_add_modal #user_quota_unit').removeAttr("disabled");
+                    } else {
+                        $('#user_add_modal #user_quota_number').attr("disabled", "true");
+                        $('#user_add_modal #user_quota_unit').attr("disabled", "true");
+                    }
+                });
+
                 //DOMAINS
 
                 $('#domains_table').bootstrapTable({//http://bootstrap-table.wenzhixin.net.cn/documentation/
@@ -364,8 +375,8 @@
                             field: 'alias_count',
                             title: 'Alias'
                         }, {
-                            field: 'mails_count',
-                            title: 'Mails'
+                            field: 'mails_size',
+                            title: 'Size'
                         }, {
                             field: 'kdim_created',
                             title: 'KDIM',
@@ -432,12 +443,11 @@
                             field: 'user_address',
                             title: 'Address'
                         }, {
-                            field: 'user_alias',
                             title: 'Alias',
                             formatter: users_table_alias
                         }, {
-                            field: 'user_mails_count',
-                            title: 'Mails'
+                            title: 'Quota',
+                            formatter: users_table_quota
                         }, {
                             field: 'user_can_receive',
                             title: 'Can receive',
@@ -458,7 +468,10 @@
                     ]
                 });
                 function users_table_alias(value, row, index) {
-                    return value.length;
+                    return row.user_alias.length;
+                }
+                function users_table_quota(value, row, index) {
+                    return row.user_space + '/' + row.user_quota;
                 }
                 function users_table_true_false(value, row, index) {
                     if (value) {
@@ -498,6 +511,9 @@
                     if (domain === "other")
                         domain = $('#user_add_modal #user_new_domain').val();
                     var password = $('#user_add_modal #user_password').val();
+                    var quota = 0;
+                    if (!$('#user_add_modal #user_enable_quota').parent().hasClass('off') && $('#user_add_modal #user_quota_number').val() !== "" && $('#user_add_modal #user_quota_unit').val() !== "")
+                        quota = $('#user_add_modal #user_quota_number').val() + $('#user_add_modal #user_quota_unit').val();
 
                     if (!validateName(username)) {//check user name
                         $('#user_add_modal #user_error .error_text').html("user should only contain letters, numbers & _");
@@ -520,6 +536,7 @@
                                 user_password: password,
                                 user_can_receive: !$('#user_add_modal #user_can_receive').parent().hasClass('off'),
                                 user_can_send: !$('#user_add_modal #user_can_send').parent().hasClass('off'),
+                                user_quota: quota,
                                 user_is_admin: !$('#user_add_modal #user_is_admin').parent().hasClass('off')
                             }),
                             contentType: 'application/json',
@@ -807,6 +824,9 @@
                 $('#user_add_modal #user_repassword').val("unchanged");
                 $('#user_add_modal #user_can_receive').bootstrapToggle('off');
                 $('#user_add_modal #user_can_send').bootstrapToggle('off');
+                $('#user_add_modal #user_enable_quota').bootstrapToggle('off');
+                $('#user_add_modal #user_quota_number').val("");
+                $('#user_add_modal #user_quota_unit option[value=G]').attr('selected','selected');
                 $('#user_add_modal #user_is_admin').bootstrapToggle('off');
                 $('#user_add_modal #user_create').html('Create user');
                 $('#user_add_modal #user_error').hide();
@@ -899,6 +919,17 @@
                     $('#user_add_modal #user_repassword').val("unchanged");
                     $('#user_add_modal #user_can_receive').bootstrapToggle(row.user_can_receive ? 'on' : 'off');
                     $('#user_add_modal #user_can_send').bootstrapToggle(row.user_can_send ? 'on' : 'off');
+                    $('#user_add_modal #user_enable_quota').bootstrapToggle(row.user_quota !== "∞" ? "on" : "off");
+                    if (row.user_quota !== "∞") {
+                        //parse value
+                        var number = row.user_quota.substring(0, row.user_quota.length-1);
+                        var unit = row.user_quota.substring(row.user_quota.length-1, row.user_quota.length);
+                        $('#user_add_modal #user_quota_number').val(number);
+                        $('#user_add_modal #user_quota_unit option[value=' + unit + ']').attr('selected','selected');
+                    } else {
+                        $('#user_add_modal #user_quota_number').val("");
+                        $('#user_add_modal #user_quota_unit option[value=G]').attr('selected','selected');
+                    }
                     $('#user_add_modal #user_is_admin').bootstrapToggle(row.user_is_admin ? 'on' : 'off');
                     $('#user_add_modal #user_create').html('Update user');
                     $('#user_add_modal').modal('show');
@@ -933,45 +964,46 @@
                             <input type="hidden" id="existing_user_name">
                             <div class="row">
                                 <div class="col-sm-6">
-                                    <div class="input-group">
-                                        <span class="input-group-addon" id="basic-user_name-addon">Username</span>
-                                        <input type="text" class="form-control" id="user_name" placeholder="<username>" autocomplete="off">
-                                        <span class="input-group-addon" id="basic-user_domain-addon">@</span>
-                                        <select class="form-control" id="user_domain">
-                                            <option value="other">other</option>
-                                        </select>
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="basic-user_name-addon">Username</span>
+                                            <input type="text" class="form-control" id="user_name" placeholder="<username>" autocomplete="off">
+                                            <span class="input-group-addon" id="basic-user_domain-addon">@</span>
+                                            <select class="form-control" id="user_domain">
+                                                <option value="other">other</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-sm-6">
-                                    <div class="input-group">
-                                        <span class="input-group-addon" id="basic-user_new_domain-addon">New domain</span>
-                                        <input type="text" class="form-control" id="user_new_domain" placeholder="<new domain>" autocomplete="off" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <br>
-                            <div class="row">
-                                <div class="col-sm-6">
-                                </div>
-                            </div>
-                            <br>
-                            <div class="row">
-                                <div class="col-sm-6">
-                                    <div class="input-group">
-                                        <span class="input-group-addon" id="user_password-addon">Password</span>
-                                        <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_password-addon" id="user_password" autocomplete="off">
-                                    </div>
-                                </div>
-                                <div class="col-sm-6">
-                                    <div class="input-group">
-                                        <span class="input-group-addon" id="user_repassword-addon">Repeat password</span>
-                                        <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_repassword-addon" id="user_repassword" autocomplete="off">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="basic-user_new_domain-addon">New domain</span>
+                                            <input type="text" class="form-control" id="user_new_domain" placeholder="<new domain>" autocomplete="off" disabled>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <br>
                             <div class="row">
                                 <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_password-addon">Password</span>
+                                            <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_password-addon" id="user_password" autocomplete="off">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_repassword-addon">Repeat password</span>
+                                            <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_repassword-addon" id="user_repassword" autocomplete="off">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4">
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_can_receive-addon">Can receive</span>
@@ -979,7 +1011,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_can_send-addon">Can send</span>
@@ -987,14 +1019,38 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <br>
-                            <div class="row">
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_is_admin-addon">Is admin</span>
                                             <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_is_admin">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_enable_quota-addon">Quota</span>
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_enable_quota">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-8">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="basic-user_quota_number-addon">Size</span>
+                                            <input type="number" class="form-control" id="user_quota_number" placeholder="∞" autocomplete="off" disabled>
+                                            <span class="input-group-addon" id="basic-user_quota_unit-addon"></span>
+                                            <select class="form-control" id="user_quota_unit" disabled>
+                                                <option value="B">Bytes</option>
+                                                <option value="k">kilobytes</option>
+                                                <option value="M">Megabytes</option>
+                                                <option value="G" selected="selected">Gigabytes</option>
+                                                <option value="T">Terabytes</option>
+                                                <option value="P">Petabytes</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
