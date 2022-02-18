@@ -548,10 +548,13 @@
                                     $('#user_add_modal #user_error').show();
                                 } else {
                                     // hide modal + update table + reset modal
-                                    //TODO WAIT 2s
-                                    $('#user_add_modal').modal('hide');
-                                    $('#users_table').bootstrapTable('refresh', {silent: true});
-                                    reset_user_modal();
+                                    //WAIT 2s
+                                    setTimeout(function () {
+                                        $('#user_add_modal').modal('hide');
+                                        $('#users_table').bootstrapTable('refresh', {silent: true});
+                                        reset_user_modal();
+                                    }, 2000);
+
                                 }
                             },
                             error: function (request, status, error) {
@@ -642,10 +645,13 @@
                                     $('#alias_add_modal #alias_error').show();
                                 } else {
                                     //hide modal + update table + reset modal
-                                    ////TODO WAIT 2s
-                                    $('#alias_add_modal').modal('hide');
-                                    $('#alias_table').bootstrapTable('refresh', {silent: true});
-                                    reset_alias_modal();
+                                    //WAIT 2s
+                                    setTimeout(function () {
+                                        $('#alias_add_modal').modal('hide');
+                                        $('#alias_table').bootstrapTable('refresh', {silent: true});
+                                        reset_alias_modal();
+                                    }, 2000);
+
                                 }
                             },
                             error: function (request, status, error) {
@@ -684,10 +690,12 @@
                                 $('#dkim_modal #dkim_error').show();
                             } else {
                                 //hide modal + update table + reset modal
-                                //TODO WAIT 2s
-                                $('#dkim_modal').modal('hide');
-                                $('#domains_table').bootstrapTable('refresh', {silent: true});
-                                $('#dkim_modal #dkim_error').hide();
+                                //WAIT 2s
+                                setTimeout(function () {
+                                    $('#dkim_modal').modal('hide');
+                                    $('#domains_table').bootstrapTable('refresh', {silent: true});
+                                    $('#dkim_modal #dkim_error').hide();
+                                }, 2000);
                             }
                         },
                         error: function (request, status, error) {
@@ -769,9 +777,12 @@
                                 $('#users_error').show();
                             } else {
                                 //hide modal + update table
-                                //TODO WAIT 2s
-                                $('#users_table').bootstrapTable('refresh', {silent: true});
-                                $('#users_error').hide();
+                                //WAIT 2s
+                                setTimeout(function () {
+                                    $('#users_table').bootstrapTable('refresh', {silent: true});
+                                    $('#users_error').hide();
+                                }, 2000);
+
 
                             }
                         },
@@ -799,9 +810,13 @@
                                 $('#alias2_error').show();
                             } else {
                                 //hide modal + update table
-                                //TODO WAIT 2s
-                                $('#alias_table').bootstrapTable('refresh', {silent: true});
-                                $('#alias2_error').hide();
+                                //WAIT 2s
+                                setTimeout(function () {
+                                    $('#alias_table').bootstrapTable('refresh', {silent: true});
+                                    $('#alias2_error').hide();
+                                    return;
+                                }, 2000);
+
                             }
                         },
                         error: function (request, status, error) {
@@ -826,7 +841,7 @@
                 $('#user_add_modal #user_can_send').bootstrapToggle('off');
                 $('#user_add_modal #user_enable_quota').bootstrapToggle('off');
                 $('#user_add_modal #user_quota_number').val("");
-                $('#user_add_modal #user_quota_unit option[value=G]').attr('selected','selected');
+                $('#user_add_modal #user_quota_unit option[value=G]').attr('selected', 'selected');
                 $('#user_add_modal #user_is_admin').bootstrapToggle('off');
                 $('#user_add_modal #user_create').html('Create user');
                 $('#user_add_modal #user_error').hide();
@@ -922,13 +937,13 @@
                     $('#user_add_modal #user_enable_quota').bootstrapToggle(row.user_quota !== "∞" ? "on" : "off");
                     if (row.user_quota !== "∞") {
                         //parse value
-                        var number = row.user_quota.substring(0, row.user_quota.length-1);
-                        var unit = row.user_quota.substring(row.user_quota.length-1, row.user_quota.length);
+                        var number = row.user_quota.substring(0, row.user_quota.length - 1);
+                        var unit = row.user_quota.substring(row.user_quota.length - 1, row.user_quota.length);
                         $('#user_add_modal #user_quota_number').val(number);
-                        $('#user_add_modal #user_quota_unit option[value=' + unit + ']').attr('selected','selected');
+                        $('#user_add_modal #user_quota_unit option[value=' + unit + ']').attr('selected', 'selected');
                     } else {
                         $('#user_add_modal #user_quota_number').val("");
-                        $('#user_add_modal #user_quota_unit option[value=G]').attr('selected','selected');
+                        $('#user_add_modal #user_quota_unit option[value=G]').attr('selected', 'selected');
                     }
                     $('#user_add_modal #user_is_admin').bootstrapToggle(row.user_is_admin ? 'on' : 'off');
                     $('#user_add_modal #user_create').html('Update user');

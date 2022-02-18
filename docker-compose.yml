@@ -38,7 +38,6 @@ services:
       ports :
        - 8080:80
       volumes:
-       - ./public/index.html:/usr/src/app/public/index.html # Index file
        - ./dms_data/mail-data/:/var/mail:ro                 # Mailserver mails
        - ./dms_data/mail-logs/:/var/log/mail:ro             # Mailserver logs
        - ./dms_data/config/:/tmp/docker-mailserver:ro       # Mailserver configs

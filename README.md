@@ -10,7 +10,8 @@ Standalone version of [jeboehm/docker-mailserver](https://github.com/jeboehm/doc
 
 ## Features :
  - manage domains (list/dkim)
- - manage users (list/add/delete/change password/restrict)
+ - manage users (list/add/delete/change password/restrict/quotas)
+ - manage web admins
  - manage alias (list/add/delete)
  - view logs
 
@@ -36,8 +37,6 @@ Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
  - fix docker compose build image (can't build/test on my system)
- - users quotas
- - interface refresh timers (async remove users & alias)
  - standalone change password page for all clients
  - add first start admin setup
 
