@@ -14,6 +14,7 @@ Standalone version of [jeboehm/docker-mailserver](https://github.com/jeboehm/doc
  - manage web admins
  - manage alias (list/add/delete)
  - view logs
+ - user can change password
 
 ## Prerequisites :
  - Docker
@@ -37,7 +38,6 @@ Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
  - fix docker compose build image (can't build/test on my system)
- - standalone change password page for all clients
  - add first start admin setup
 
 ## Plans :

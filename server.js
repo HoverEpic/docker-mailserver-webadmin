@@ -84,32 +84,66 @@ var check_auth = function (req, res, result) {
 //        console.log("auth asked for " + ip);
         return result(false);
     } else {
-        check_user(user.name, user.pass, function (auth_result) {
-            if (auth_result && APP_WEB_ADMINS.indexOf(user.name) > -1) {
+        if (APP_WEB_ADMINS.indexOf(user.name) > -1) {
+            check_user(user.name, user.pass, function (auth_result) {
+                if (auth_result) {
 //            console.log("auth succeeded for " + ip + " user=" + (!user ? "undefined" : user.name));
-                return result(user);
-            } else {
-                res.statusCode = 401;
-                res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-                res.end('Access denied');
-                console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
-                return result(false);
-            }
-        });
+                    return result(user);
+                } else {
+                    res.statusCode = 401;
+                    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+                    res.end('Access denied');
+                    console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
+                    return result(false);
+                }
+            });
+        } else {
+            res.statusCode = 401;
+            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+            res.end('Access denied');
+            return result(false);
+        }
     }
 };
 
 // the main page
 app.get('/', function (req, res) {
+    res.status(403).send();
+});
+app.get('/admin', function (req, res) {
     check_auth(req, res, function (result) {
         if (result)
-            res.sendFile(path.join(__dirname + '/public/index.html'));
+            res.sendFile(path.join(__dirname + '/public/admin.html'));
         else
             res.status(403).send();
     });
 });
+// change password page
+app.get('/change_password', function (req, res) {
+    res.sendFile(path.join(__dirname + '/public/change_password.html'));
+});
+// change password query
+app.post('/change_password', function (req, res) {
+    var email = req.body.email || "";
+    var old_password = req.body.old_password || "";
+    var new_password = req.body.new_password || "";
+    check_user(email, old_password, function (auth_result) {
+        if (auth_result) {
+            if (new_password !== "") {
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + email + ' ' + new_password).then(
+                        function (data) {// Success
+                            res.send(JSON.stringify({message: "Password updated !"}));
+                        }, function (rejected) {// Failed
+                    res.send(JSON.stringify({error: "Password fail to update, contact your administrator."}));
+                });
+            } else
+                res.send(JSON.stringify({error: "New password cannot be empty"}));
+        } else
+            res.send(JSON.stringify({error: "Unknown account, check your credentials."}));
+    });
+});
 
-// the main page
+// logout page
 app.get('/logout', function (req, res) {
     res.status(401).send([
         'You are now logged out.',
@@ -180,7 +214,7 @@ app.put('/users', function (req, res) {
             //set user restrictions
             set_can_receive(address, user_can_receive);
             set_can_send(address, user_can_send);
-            
+
             //quota
             set_quota(address, user_quota);
 
@@ -316,10 +350,10 @@ app.get('/logs', function (req, res) {
             } else if (fs.existsSync(MAIL_LOGS_DIR + "/" + file)) {
                 docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' cat /var/log/mail/' + file).then(
                         function (data) {
-                    if (data.raw)
-                        data = data.raw.split('\n');
-                    res.send(JSON.stringify({data: data}));
-                }, function (rejected) {
+                            if (data.raw)
+                                data = data.raw.split('\n');
+                            res.send(JSON.stringify({data: data}));
+                        }, function (rejected) {
                     res.send(JSON.stringify({error: rejected}));
                 });
             } else {
