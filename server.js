@@ -32,6 +32,8 @@ const MAIL_CONFIG_DIR = config.get('config.paths.dsm-config');
 const MAIL_DATA_DIR = config.get('config.paths.dsm-mail-data');
 const MAIL_STATE_DIR = config.get('config.paths.dsm-mail-state');
 const MAIL_LOGS_DIR = config.get('config.paths.dsm-mail-logs');
+const CAN_REGISTER = config.get('config.register');
+const CAN_CHANGE_PASS = config.get('config.change_pass');
 
 var APP_WEB_ADMINS = [""]; //admins system
 var app = express();
@@ -118,30 +120,55 @@ app.get('/admin', function (req, res) {
             res.status(403).send();
     });
 });
-// change password page
-app.get('/change_password', function (req, res) {
-    res.sendFile(path.join(__dirname + '/public/change_password.html'));
-});
-// change password query
-app.post('/change_password', function (req, res) {
-    var email = req.body.email || "";
-    var old_password = req.body.old_password || "";
-    var new_password = req.body.new_password || "";
-    check_user(email, old_password, function (auth_result) {
-        if (auth_result) {
-            if (new_password !== "") {
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + email + ' ' + new_password).then(
-                        function (data) {// Success
-                            res.send(JSON.stringify({message: "Password updated !"}));
-                        }, function (rejected) {// Failed
-                    res.send(JSON.stringify({error: "Password fail to update, contact your administrator."}));
-                });
-            } else
-                res.send(JSON.stringify({error: "New password cannot be empty"}));
-        } else
-            res.send(JSON.stringify({error: "Unknown account, check your credentials."}));
+if (CAN_REGISTER) {
+    // create account page
+    app.get('/create_account', function (req, res) {
+        res.sendFile(path.join(__dirname + '/public/create_account.html'));
     });
-});
+    app.get('/available_domains', function (req, res) { //TODO restrictions
+        get_domains_names(function (results) {
+            res.send(JSON.stringify({domains: results}));
+        });
+    });
+    // create account query
+    app.post('/create_account', function (req, res) { //TODO restrictions
+        var username = req.body.username || "";
+        var domain = req.body.domain || "";
+        var password = req.body.password || "";
+        docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + username + '@' + domain + ' ' + password).then(
+                function (data) {// Success
+                    res.send(JSON.stringify({message: "Account created !"}));
+                }, function (rejected) {// Failed
+            res.send(JSON.stringify({error: rejected.stdout}));
+        });
+    });
+}
+if (CAN_CHANGE_PASS) {
+    // change password page
+    app.get('/change_password', function (req, res) {
+        res.sendFile(path.join(__dirname + '/public/change_password.html'));
+    });
+    // change password query
+    app.post('/change_password', function (req, res) {
+        var email = req.body.email || "";
+        var old_password = req.body.old_password || "";
+        var new_password = req.body.new_password || "";
+        check_user(email, old_password, function (auth_result) {
+            if (auth_result) {
+                if (new_password !== "") {
+                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + email + ' ' + new_password).then(
+                            function (data) {// Success
+                                res.send(JSON.stringify({message: "Password updated !"}));
+                            }, function (rejected) {// Failed
+                        res.send(JSON.stringify({error: "Password fail to update, contact your administrator."}));
+                    });
+                } else
+                    res.send(JSON.stringify({error: "New password cannot be empty"}));
+            } else
+                res.send(JSON.stringify({error: "Unknown account, check your credentials."}));
+        });
+    });
+}
 
 // logout page
 app.get('/logout', function (req, res) {
@@ -197,14 +224,14 @@ app.put('/users', function (req, res) {
             var user_is_admin = req.body.user_is_admin || false;
             var address = user_name + '@' + domain_name;
             if (existing_user_name === "") {//add new user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + address + ' ' + user_password).then(
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + address + ' ' + user_password).then(//FIX ERR_HTTP_HEADERS_SENT
                         function (data) {// Success
                             res.send(JSON.stringify({message: "User added !"}));
                         }, function (rejected) {// Failed
                     res.send(JSON.stringify({error: rejected}));
                 });
             } else if (user_password !== "unchanged") {//update password user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + address + ' ' + user_password).then(
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + address + ' ' + user_password).then(//FIX ERR_HTTP_HEADERS_SENT
                         function (data) {// Success
                             res.send(JSON.stringify({message: "User updated !"}));
                         }, function (rejected) {// Failed
@@ -394,6 +421,11 @@ var get_domains = function (limit, offset, sort, order, search, callback) {
             }
         }
         callback(results);
+    });
+};
+var get_domains_names = function (callback) {
+    getDirAsync(MAIL_DATA_DIR, function (domains_result) {
+        callback(domains_result);
     });
 };
 var get_users = function (limit, offset, sort, order, search, callback) {

@@ -8,7 +8,10 @@ Standalone version of [jeboehm/docker-mailserver](https://github.com/jeboehm/doc
 
 /!\ do not expose on public internet, or, do it at your own risks. I'm not a security expert.
 
-## Features :
+## Features (user side) :
+ - users can register and update their password
+
+## Features (admin panel):
  - manage domains (list/dkim)
  - manage users (list/add/delete/change password/restrict/quotas)
  - manage web admins
@@ -37,10 +40,15 @@ docker-compose up
 Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
+ - index page (create account, how to connect, webmail, change my password, admin panel)
+ - FIX ERR_HTTP_HEADERS_SENT on async docker queries (update user)
  - fix docker compose build image (can't build/test on my system)
  - add first start admin setup
 
+## Security TODOs :
+ - limit calls on public endpoints (register/password)
+
 ## Plans :
- - web API ?
+ - API ?
  - change system from file reads to commands only ?
  - domain config checker (mx/spf/dkim)

@@ -159,8 +159,13 @@
             .bootstrap-select.btn-group .dropdown-menu li a {
                 padding: 5px;
             }
-            .bootstrap-select .dropdown-toggle.bs-placeholder, .input-group .form-control:last-child, .input-group-btn:last-child>.btn {
-                border-radius: 4px;
+            .input-group-addon:not(:first-child):not(:last-child) {
+                border: none;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+            }
+            .toggle.app {
+                border-radius: 0 4px 4px 0 !important;
             }
             .fixed-table-toolbar .btn {
                 height: 34px;
@@ -837,8 +842,8 @@
                 $('#user_add_modal #user_domain').removeAttr("disabled");
                 $('#user_add_modal #user_password').val("unchanged");
                 $('#user_add_modal #user_repassword').val("unchanged");
-                $('#user_add_modal #user_can_receive').bootstrapToggle('off');
-                $('#user_add_modal #user_can_send').bootstrapToggle('off');
+                $('#user_add_modal #user_can_receive').bootstrapToggle('on');
+                $('#user_add_modal #user_can_send').bootstrapToggle('on');
                 $('#user_add_modal #user_enable_quota').bootstrapToggle('off');
                 $('#user_add_modal #user_quota_number').val("");
                 $('#user_add_modal #user_quota_unit option[value=G]').attr('selected', 'selected');
@@ -1022,7 +1027,7 @@
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_can_receive-addon">Can receive</span>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_can_receive">
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_can_receive" data-style="app">
                                         </div>
                                     </div>
                                 </div>
@@ -1030,7 +1035,7 @@
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_can_send-addon">Can send</span>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_can_send">
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_can_send" data-style="app">
                                         </div>
                                     </div>
                                 </div>
@@ -1038,7 +1043,7 @@
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_is_admin-addon">Is admin</span>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_is_admin">
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="warning" data-size="small" id="user_is_admin" data-style="app">
                                         </div>
                                     </div>
                                 </div>
@@ -1048,7 +1053,7 @@
                                     <div class="form-group">
                                         <div class="input-group">
                                             <span class="input-group-addon" id="user_enable_quota-addon">Quota</span>
-                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_enable_quota">
+                                            <input type="checkbox" data-toggle="toggle" data-onstyle="success" data-size="small" id="user_enable_quota" data-style="app">
                                         </div>
                                     </div>
                                 </div>

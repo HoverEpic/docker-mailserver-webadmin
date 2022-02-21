@@ -10,6 +10,8 @@
             "dsm-mail-data": "/var/mail/",
             "dsm-mail-state": "/var/mail-state/",
             "dsm-mail-logs": "/tmp/docker-mailserver/"
-        }
+        },
+        "register" : true,
+        "change_pass" : true
     }
 }
