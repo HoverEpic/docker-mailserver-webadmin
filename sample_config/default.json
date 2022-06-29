@@ -1,15 +1,15 @@
 {
     "config": {
         "server": {
-            "port": 8080,
+            "port": 80,
             "host": "0.0.0.0"
         },
         "docker-mailserver": "mailserver",
         "paths": {
-            "dsm-config": "./dms_data/config",
-            "dsm-mail-data": "/var/mail/",
+            "dsm-config": "/tmp/docker-mailserver",
+            "dsm-mail-data": "/var/mail",
             "dsm-mail-state": "/var/mail-state/",
-            "dsm-mail-logs": "/tmp/docker-mailserver/"
+            "dsm-mail-logs": "/var/log/mail"
         },
         "register" : true,
         "change_pass" : true

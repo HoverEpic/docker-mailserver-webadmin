@@ -24,7 +24,9 @@ Standalone version of [jeboehm/docker-mailserver](https://github.com/jeboehm/doc
  - [docker-mailserver](https://github.com/docker-mailserver/docker-mailserver) container
 
 ## Build :
-docker-compose --build or ./docker_build.sh
+docker-compose up --build
+
+or ./docker_build.sh
 
 ## Compose :
 ### First edit docker-compose.yml with your own env
@@ -42,7 +44,6 @@ Access with http://127.0.0.1:8080 in web browser or server address.
 ## TODOs :
  - index page (create account, how to connect, webmail, change my password, admin panel)
  - FIX ERR_HTTP_HEADERS_SENT on async docker queries (update user)
- - fix docker compose build image (can't build/test on my system)
  - add first start admin setup
 
 ## Security TODOs :
@@ -50,5 +51,5 @@ Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## Plans :
  - API ?
- - change system from file reads to commands only ?
+ - change system from file reads to docker exec only ?
  - domain config checker (mx/spf/dkim)

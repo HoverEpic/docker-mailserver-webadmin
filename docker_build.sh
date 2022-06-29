@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build -t epicblox/docker-mailserver-webadmin .
+docker build -t epicblox/mailserver-webadmin .

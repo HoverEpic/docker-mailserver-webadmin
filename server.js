@@ -132,9 +132,9 @@ if (CAN_REGISTER) {
     });
     // create account query
     app.post('/create_account', function (req, res) { //TODO restrictions
-        var username = req.body.username || "";
-        var domain = req.body.domain || "";
-        var password = req.body.password || "";
+        var username = req.body.username || "";// TODO SECURITY
+        var domain = req.body.domain || "";// TODO SECURITY
+        var password = req.body.password || "";// TODO SECURITY
         docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + username + '@' + domain + ' ' + password).then(
                 function (data) {// Success
                     res.send(JSON.stringify({message: "Account created !"}));
@@ -151,8 +151,8 @@ if (CAN_CHANGE_PASS) {
     // change password query
     app.post('/change_password', function (req, res) {
         var email = req.body.email || "";
-        var old_password = req.body.old_password || "";
-        var new_password = req.body.new_password || "";
+        var old_password = req.body.old_password || "";// TODO SECURITY
+        var new_password = req.body.new_password || "";// TODO SECURITY
         check_user(email, old_password, function (auth_result) {
             if (auth_result) {
                 if (new_password !== "") {
@@ -174,8 +174,8 @@ if (CAN_CHANGE_PASS) {
 app.get('/logout', function (req, res) {
     res.status(401).send([
         'You are now logged out.',
-        '&lt;br/>',
-        '<a href="./">Return to the secure page. You will have to log in again.</a>'
+        '<br/>',
+        '<a href="/admin">Return to the secure page. You will have to log in again.</a>'
     ].join(''));
 });
 
@@ -217,12 +217,12 @@ app.put('/users', function (req, res) {
             var user_name = req.body.user_name || "";
             var existing_user_name = req.body.existing_user_name || "";
             var domain_name = req.body.domain_name || "";
-            var user_password = req.body.user_password || "";
+            var user_password = req.body.user_password || "";// TODO SECURITY
             var user_can_receive = req.body.user_can_receive || false;
             var user_can_send = req.body.user_can_send || false;
             var user_quota = req.body.user_quota || 0;
             var user_is_admin = req.body.user_is_admin || false;
-            var address = user_name + '@' + domain_name;
+            var address = user_name + '@' + domain_name;// TODO SECURITY
             if (existing_user_name === "") {//add new user
                 docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + address + ' ' + user_password).then(//FIX ERR_HTTP_HEADERS_SENT
                         function (data) {// Success
@@ -261,7 +261,7 @@ app.delete('/users', function (req, res) {
                 res.status(200).send();
             else {
                 for (let i = 0; i < names.length; i++) {
-                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email del ' + names[i]).then(function (data) {});
+                    docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email del ' + names[i]).then(function (data) {});// TODO SECURITY
                 }
                 res.send(JSON.stringify({message: "Users(s) deleted !"}));
             }
@@ -472,14 +472,16 @@ var get_users = function (limit, offset, sort, order, search, callback) {
     });
 };
 function can_receive(email) {
-    var receive_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-receive-access.cf");
-    if (receive_file_lines.length > 0) {
-        for (var i = 0; i < receive_file_lines.length; i++) {
-            var line = receive_file_lines[i].toString();
-            var file_line = line.split(' \t\t ');
-            var line_email = file_line[0];
-            if (line_email === email)
-                return false;
+    if (fs.existsSync(MAIL_CONFIG_DIR + "/postfix-receive-access.cf")) {
+        var receive_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-receive-access.cf");
+        if (receive_file_lines.length > 0) {
+            for (var i = 0; i < receive_file_lines.length; i++) {
+                var line = receive_file_lines[i].toString();
+                var file_line = line.split(' \t\t ');
+                var line_email = file_line[0];
+                if (line_email === email)
+                    return false;
+            }
         }
     }
     return true;
@@ -493,14 +495,16 @@ function set_can_receive(email, value) {
     });
 }
 function can_send(email) {
-    var send_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-send-access.cf");
-    if (send_file_lines.length > 0) {
-        for (var i = 0; i < send_file_lines.length; i++) {
-            var line = send_file_lines[i].toString();
-            var file_line = line.split(' \t\t ');
-            var line_email = file_line[0];
-            if (line_email === email)
-                return false;
+    if (fs.existsSync(MAIL_CONFIG_DIR + "/postfix-send-access.cf")) {
+        var send_file_lines = readFileSync(MAIL_CONFIG_DIR + "/postfix-send-access.cf");
+        if (send_file_lines.length > 0) {
+            for (var i = 0; i < send_file_lines.length; i++) {
+                var line = send_file_lines[i].toString();
+                var file_line = line.split(' \t\t ');
+                var line_email = file_line[0];
+                if (line_email === email)
+                    return false;
+            }
         }
     }
     return true;
@@ -565,6 +569,12 @@ var gen_dkim = function (callback) {
 //check if a username+password are register and can login on server
 var check_user = function (username, password, callback) {
     if (!username || !password)
+        callback(false);
+    //security issue
+    if (username.includes(';')
+            || username.includes(' ')
+            || password.includes(';')
+            || password.includes(' '))
         callback(false);
     docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' doveadm auth test ' + username + ' ' + password).then(
             function (data) {// Success test
@@ -672,7 +682,7 @@ const getAllFiles = function (dirPath, arrayOfFiles) {
         if (fs.statSync(dirPath + "/" + file).isDirectory()) {
             arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles);
         } else {
-            arrayOfFiles.push(path.join(__dirname, dirPath, file));
+            arrayOfFiles.push(path.join(dirPath, file));
         }
     });
     return arrayOfFiles;

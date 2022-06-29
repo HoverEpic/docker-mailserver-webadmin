@@ -39,10 +39,11 @@ services:
        - 8080:80
       volumes:
        - ./dms_data/mail-data/:/var/mail:ro                 # Mailserver mails
+       - ./dms_data/mail-state/:/var/mail-state/:ro         # Mail stats
        - ./dms_data/mail-logs/:/var/log/mail:ro             # Mailserver logs
        - ./dms_data/config/:/tmp/docker-mailserver:ro       # Mailserver configs
        - ./certs/:/etc/letsencrypt/live/:ro                 # Letsencrypt certs
        - ./dms_admin_config/:/usr/src/app/config/           # Config files
        - /etc/localtime:/etc/localtime:ro                   # Sync time from host
-       - /var/run/docker.sock:/tmp/docker.sock:ro           # Docker socket
+       - /var/run/docker.sock:/var/run/docker.sock:ro       # Docker socket
        

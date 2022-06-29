@@ -1,7 +1,7 @@
-FROM node:carbon
+FROM node:alpine3.15
 
-RUN apt update 
-#    && apt install ffmpeg -y
+RUN apk add --update docker openrc
+RUN rc-update add docker boot
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -16,7 +16,7 @@ RUN npm install --save
 # RUN npm install --only=production
 
 COPY public public
-#COPY sample_config sample_config
+COPY sample_config sample_config
 COPY start.sh start.sh
 COPY server.js .
 
