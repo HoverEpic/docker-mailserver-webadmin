@@ -199,10 +199,10 @@
                         <a href="#" data-placement="bottom" data-toggle="tooltip" href="#" data-original-title="Stats"><i class="fa fa-bar-chart-o"></i></a>
                     </li>-->
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">admin@balek.tk <b class="fa fa-angle-down"></b></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span id="my_adress">admin@balek.tk</span> <b class="fa fa-angle-down"></b></a>
                         <ul class="dropdown-menu">
                             <!--<li><a href="#"><i class="fa fa-fw fa-user"></i> Edit Profile</a></li>-->
-                            <li><a href="#"><i class="fa fa-fw fa-cog"></i> Change Password</a></li>
+                            <li><a href="" id="update_my_pass"><i class="fa fa-fw fa-cog"></i> Change Password</a></li>
                             <li class="divider"></li>
                             <li><a href="/logout"><i class="fa fa-fw fa-power-off"></i> Logout</a></li>
                         </ul>
@@ -489,6 +489,8 @@
                     return [
                         '<button class="btn btn-default btn-xs user_edit" title="Edit">',
                         '<i class="glyphicon glyphicon-pencil"></i> Edit',
+                        '<button class="btn btn-default btn-xs user_pass" title="Password">',
+                        '<i class="glyphicon glyphicon-pencil"></i> Password',
                         '</button> ',
                         '<button class="btn btn-danger btn-xs user_remove" title="Delete">',
                         '<i class="glyphicon glyphicon-remove"></i> Remove',
@@ -569,6 +571,49 @@
                             }
                         });
                     }
+                });
+//                $('#update_my_pass').click(function () {
+//                    //populate modal
+//                    $('#user_pass_modal #existing_user_name').val($('#my_adress'));
+//                    $('#user_pass_modal').modal('show');
+//                });
+                $('#user_update_pass').click(function () {
+                    var user_email = $('#user_pass_modal #existing_user_name').val();
+                    var password = $('#user_pass_modal #user_password').val();
+                    if (password === "" && password !== $('#user_pass_modal #user_repassword').val()) {//check user password
+                        $('#user_pass_modal #user_error .error_text').html("Passwords mismatched");
+                        $('#user_pass_modal #user_error').show();
+                    }
+                    $.ajax({
+                            url: '/user_pass',
+                            type: 'PUT',
+                            data: JSON.stringify({
+                                user_email: user_email,
+                                user_password: password
+                            }),
+                            contentType: 'application/json',
+                            success: function (data) {
+                                data = JSON.parse(data);
+                                if (data.error) {
+                                    //show error
+                                    $('#user_pass_modal #pass_error .error_text').html(data.error);
+                                    $('#user_pass_modal #pass_error').show();
+                                } else {
+                                    // hide modal + update table + reset modal
+                                    //WAIT 2s
+                                    setTimeout(function () {
+                                        $('#user_pass_modal').modal('hide');
+                                        reset_password_modal();
+                                    }, 2000);
+
+                                }
+                            },
+                            error: function (request, status, error) {
+                                //show error
+                                $('#user_pass_modal #pass_error .error_text').html(request.status + " " + error);
+                                $('#user_pass_modal #pass_error').show();
+                            }
+                        });
                 });
                 $("#users_remove").click(function () {
                     var names = $.map($('#users_table').bootstrapTable('getSelections'), function (row) {
@@ -840,8 +885,10 @@
                 $('#user_add_modal #user_name').removeAttr("disabled");
                 $('#user_add_modal #user_domain').val("");
                 $('#user_add_modal #user_domain').removeAttr("disabled");
-                $('#user_add_modal #user_password').val("unchanged");
-                $('#user_add_modal #user_repassword').val("unchanged");
+                $('#user_add_modal #user_password').removeAttr("disabled");
+                $('#user_add_modal #user_password').val("");
+                $('#user_add_modal #user_repassword').removeAttr("disabled");
+                $('#user_add_modal #user_repassword').val("");
                 $('#user_add_modal #user_can_receive').bootstrapToggle('on');
                 $('#user_add_modal #user_can_send').bootstrapToggle('on');
                 $('#user_add_modal #user_enable_quota').bootstrapToggle('off');
@@ -850,6 +897,13 @@
                 $('#user_add_modal #user_is_admin').bootstrapToggle('off');
                 $('#user_add_modal #user_create').html('Create user');
                 $('#user_add_modal #user_error').hide();
+            }
+            
+            function reset_password_modal() {
+                $('#user_pass_modal #existing_user_name').val("");
+                $('#user_pass_modal #user_password').val("");
+                $('#user_pass_modal #user_repassword').val("");
+                $('#user_pass_modal #pass_error').hide();
             }
 
             function reset_alias_modal() {
@@ -925,6 +979,11 @@
                 }
             };
             window.users_table_events = {// catch table events here !
+                'click .user_pass': function(e, value, row, index){
+                    //populate modal
+                    $('#user_pass_modal #existing_user_name').val(row.user_address);
+                    $('#user_pass_modal').modal('show');
+                },
                 'click .user_edit': function (e, value, row, index) {
                     //populate modal
                     $('#user_add_modal #user_error').hide();
@@ -935,8 +994,8 @@
                     $('#user_add_modal #user_domain').val(row.user_address.split('@')[1]);
                     $('#user_add_modal #user_domain').attr("disabled", "true");
                     $('#user_add_modal #user_new_domain').attr("disabled", "true");
-                    $('#user_add_modal #user_password').val("unchanged");
-                    $('#user_add_modal #user_repassword').val("unchanged");
+                    $('#user_add_modal #user_password').attr("disabled", "true");
+                    $('#user_add_modal #user_repassword').attr("disabled", "true");
                     $('#user_add_modal #user_can_receive').bootstrapToggle(row.user_can_receive ? 'on' : 'off');
                     $('#user_add_modal #user_can_send').bootstrapToggle(row.user_can_send ? 'on' : 'off');
                     $('#user_add_modal #user_enable_quota').bootstrapToggle(row.user_quota !== "∞" ? "on" : "off");
@@ -1080,6 +1139,47 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                         <button type="button" class="btn btn-primary" id="user_create">Create User</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div><!-- /.modal -->
+        <div class="modal fade" tabindex="-1" role="dialog" id="user_pass_modal">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Update user password</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger alert-dismissible" style="display: none" id="pass_error" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <strong>Error!</strong> <span class="error_text">Test error in this modal.</span>
+                        </div>
+                        <form>
+                            <input type="hidden" id="existing_user_name">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_password-addon">Password</span>
+                                            <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_password-addon" id="user_password" autocomplete="off">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <div class="input-group">
+                                            <span class="input-group-addon" id="user_repassword-addon">Repeat password</span>
+                                            <input type="password" class="form-control" placeholder="Password" aria-label="" aria-describedby="user_repassword-addon" id="user_repassword" autocomplete="off">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="user_update_pass">Update password</button>
                     </div>
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->

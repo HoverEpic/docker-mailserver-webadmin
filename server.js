@@ -83,10 +83,23 @@ var check_auth = function (req, res, result) {
         res.statusCode = 401;
         res.setHeader('WWW-Authenticate', 'Basic realm="example"');
         res.end('Access denied');
-//        console.log("auth asked for " + ip);
         return result(false);
     } else {
-        if (APP_WEB_ADMINS.indexOf(user.name) > -1) {
+        if (APP_WEB_ADMINS.length === 0) { //empty list, first login = admin
+            check_user(user.name, user.pass, function (auth_result) {
+                if (auth_result) {
+                    console.log("auth succeeded for new admin : " + ip + " user=" + (!user ? "undefined" : user.name));
+                    set_is_admin(user.name, true);
+                    return result(user);
+                } else {
+                    res.statusCode = 401;
+                    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+                    res.end('Access denied');
+                    console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
+                    return result(false);
+                }
+            });
+        } else if (APP_WEB_ADMINS.indexOf(user.name) > -1) { //user is in admin list
             check_user(user.name, user.pass, function (auth_result) {
                 if (auth_result) {
 //            console.log("auth succeeded for " + ip + " user=" + (!user ? "undefined" : user.name));
@@ -99,7 +112,8 @@ var check_auth = function (req, res, result) {
                     return result(false);
                 }
             });
-        } else {
+        } else { //user is not in admin list
+            console.log("auth failed for " + ip + " user=" + (!user ? "undefined" : user.name));
             res.statusCode = 401;
             res.setHeader('WWW-Authenticate', 'Basic realm="example"');
             res.end('Access denied');
@@ -222,33 +236,55 @@ app.put('/users', function (req, res) {
             var user_can_send = req.body.user_can_send || false;
             var user_quota = req.body.user_quota || 0;
             var user_is_admin = req.body.user_is_admin || false;
-            var address = user_name + '@' + domain_name;// TODO SECURITY
-            if (existing_user_name === "") {//add new user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + address + ' ' + user_password).then(//FIX ERR_HTTP_HEADERS_SENT
+            if (existing_user_name === "") {//add new user with options
+                var address = user_name + '@' + domain_name;// TODO SECURITY
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email add ' + address + ' ' + user_password).then(
                         function (data) {// Success
+                            //set user restrictions
+                            set_can_receive(address, user_can_receive);
+                            set_can_send(address, user_can_send);
+
+                            //quota
+                            set_quota(address, user_quota);
+
+                            //admin system
+                            set_is_admin(address, user_is_admin);
                             res.send(JSON.stringify({message: "User added !"}));
                         }, function (rejected) {// Failed
                     res.send(JSON.stringify({error: rejected}));
                 });
-            } else if (user_password !== "unchanged") {//update password user
-                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + address + ' ' + user_password).then(//FIX ERR_HTTP_HEADERS_SENT
+            } else { //just update options
+                //set user restrictions
+                set_can_receive(existing_user_name, user_can_receive);
+                set_can_send(existing_user_name, user_can_send);
+
+                //quota
+                set_quota(existing_user_name, user_quota);
+
+                //admin system
+                set_is_admin(existing_user_name, user_is_admin);
+
+                res.send(JSON.stringify({message: "User updated !"}));
+            }
+        } else
+            res.status(403).send();
+    });
+});
+app.put('/user_pass', function (req, res) {
+    check_auth(req, res, function (result) {
+        if (result) {
+            var existing_user_name = req.body.user_email || "";// TODO SECURITY
+            var user_password = req.body.user_password || "";// TODO SECURITY
+            if (user_password !== "") {//update password user
+                docker.command('exec ' + DOCKER_MAILSERVER_NAME + ' setup email update ' + existing_user_name + ' ' + user_password).then(
                         function (data) {// Success
-                            res.send(JSON.stringify({message: "User updated !"}));
+                            res.send(JSON.stringify({message: "User password updated !"}));
                         }, function (rejected) {// Failed
                     res.send(JSON.stringify({error: rejected}));
                 });
+            } else {
+                res.send(JSON.stringify({error: "Password must not be empty"}));
             }
-            //set user restrictions
-            set_can_receive(address, user_can_receive);
-            set_can_send(address, user_can_send);
-
-            //quota
-            set_quota(address, user_quota);
-
-            //admin system
-            set_is_admin(address, user_is_admin);
-
-            res.send(JSON.stringify({message: "User updated !"}));
         } else
             res.status(403).send();
     });

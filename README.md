@@ -43,11 +43,10 @@ Access with http://127.0.0.1:8080 in web browser or server address.
 
 ## TODOs :
  - index page (create account, how to connect, webmail, change my password, admin panel)
- - FIX ERR_HTTP_HEADERS_SENT on async docker queries (update user)
- - add first start admin setup
 
 ## Security TODOs :
  - limit calls on public endpoints (register/password)
+ - secure direct docker calls with inputs
 
 ## Plans :
  - API ?
